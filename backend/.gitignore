@@ -1,0 +1,13 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Logs
+*.log
+
+# Scenarios data (if you want to keep it empty on GitHub)
+scenarios/data/**/*.json
+!scenarios/data/

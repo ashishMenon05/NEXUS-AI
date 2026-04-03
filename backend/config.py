@@ -1,0 +1,58 @@
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parent
+
+# Load environment variables, overriding defaults if needed
+load_dotenv(BASE_DIR / ".env")
+
+class Settings:
+    # OLLAMA
+    OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+    OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "ollama")
+
+    # AGENTS
+    AGENT_A_MODEL = os.getenv("AGENT_A_MODEL", "dolphin-phi")
+    AGENT_B_MODEL = os.getenv("AGENT_B_MODEL", "qwen2.5:3b")
+    AGENT_A_PROVIDER = os.getenv("AGENT_A_PROVIDER", "ollama") # or "hf"
+    AGENT_B_PROVIDER = os.getenv("AGENT_B_PROVIDER", "ollama")
+    AGENT_A_TEMPERATURE = float(os.getenv("AGENT_A_TEMPERATURE", "0.8"))
+    AGENT_B_TEMPERATURE = float(os.getenv("AGENT_B_TEMPERATURE", "0.6"))
+    AGENT_A_MAX_TOKENS = int(os.getenv("AGENT_A_MAX_TOKENS", "300"))
+    AGENT_B_MAX_TOKENS = int(os.getenv("AGENT_B_MAX_TOKENS", "300"))
+
+    # HUGGINGFACE
+    HF_TOKEN = os.getenv("HF_TOKEN")
+    HF_INFERENCE_URL = os.getenv("HF_INFERENCE_URL", "https://api-inference.huggingface.co/v1")
+    HF_AGENT_A_MODEL = os.getenv("HF_AGENT_A_MODEL", "microsoft/Phi-3-mini-4k-instruct")
+    HF_AGENT_B_MODEL = os.getenv("HF_AGENT_B_MODEL", "Qwen/Qwen2.5-3B-Instruct")
+
+    # COMPETITION
+    API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:11434/v1")
+    MODEL_NAME = os.getenv("MODEL_NAME", "dolphin-phi")
+    API_KEY = os.getenv("API_KEY", "ollama")
+
+    # SERVER
+    HOST = os.getenv("HOST", "0.0.0.0")
+    PORT = int(os.getenv("PORT", "7860"))
+    DEBUG = os.getenv("DEBUG", "true").lower() in ("true", "1", "yes")
+    ENVIRONMENT = os.getenv("ENVIRONMENT", "local")
+
+    # EPISODE
+    MAX_STEPS = int(os.getenv("MAX_STEPS", "1000"))
+    MAX_EPISODE_TIME_SECONDS = int(os.getenv("MAX_EPISODE_TIME_SECONDS", "1200"))
+    SUCCESS_SCORE_THRESHOLD = float(os.getenv("SUCCESS_SCORE_THRESHOLD", "0.5"))
+
+    # MCP TOOL SERVER
+    MCP_SERVER_PORT = int(os.getenv("MCP_SERVER_PORT", "8001"))
+    MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:8001")
+
+    # CUSTOM MODEL
+    CUSTOM_MODEL_ENABLED = os.getenv("CUSTOM_MODEL_ENABLED", "false").lower() in ("true", "1", "yes")
+    CUSTOM_MODEL_BASE_URL = os.getenv("CUSTOM_MODEL_BASE_URL", "")
+    CUSTOM_MODEL_API_KEY = os.getenv("CUSTOM_MODEL_API_KEY", "")
+    CUSTOM_MODEL_NAME = os.getenv("CUSTOM_MODEL_NAME", "")
+    CUSTOM_MODEL_AGENT = os.getenv("CUSTOM_MODEL_AGENT", "")
+
+settings = Settings()

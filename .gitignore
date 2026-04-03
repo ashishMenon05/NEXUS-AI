@@ -1,0 +1,14 @@
+# VS Code / IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Brain / Artifacts (Optional: keep if you want them on GitHub)
+# /home/habibi/.gemini/antigravity/brain/
+
+# Local env
+.env
+*.local
+node_modules/
+venv/
+__pycache__/
