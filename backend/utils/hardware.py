@@ -3,10 +3,6 @@ import re
 
 def check_hardware() -> dict:
     # Auto-detect available VRAM via subprocess nvidia-smi call
-    vram_available_mb = 0
-    use_gpu = False
-    
-    try:
     vram_total_mb = 0
     vram_used_mb = 0
     vram_free_mb = 0
@@ -32,8 +28,6 @@ def check_hardware() -> dict:
                     vram_free_mb = int(parts[2])
                     gpu_utilization = int(parts[3])
                     use_gpu = True
-    except FileNotFoundError:
-        pass
     except FileNotFoundError:
         pass
     except Exception:
