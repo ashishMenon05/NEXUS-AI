@@ -1,5 +1,6 @@
 name: nexus-incident-investigation
 version: "1.0.0"
+tags: ["openenv"]
 description: >
   NEXUS — Dual Agent Incident Investigation Environment.
   Two AI agents collaborate to investigate real-world system incidents.
@@ -51,3 +52,8 @@ reward_description: >
 inference_script: inference.py
 entry_point: backend/main.py
 docker_port: 7860
+
+baseline_scores:
+  software-incident: 0.45
+  business-process-failure: 0.35
+  cascade-system-failure: 0.25

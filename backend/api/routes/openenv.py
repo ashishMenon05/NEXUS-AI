@@ -73,6 +73,7 @@ from typing import Optional, Dict, Any
 class ResetRequest(BaseModel):
     task: str = "software-incident"
     custom_scenario: Optional[Dict[str, Any]] = None
+    seed: Optional[int] = None
 
 class StepResponse(BaseModel):
     observation: NexusObservation
@@ -90,7 +91,7 @@ async def start_simulation():
 @router.post("/reset", response_model=NexusObservation)
 async def reset_env(req: ResetRequest):
     try:
-        obs = await episode_manager.reset(req.task, req.custom_scenario)
+        obs = await episode_manager.reset(req.task, req.custom_scenario, seed=req.seed)
         return obs
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

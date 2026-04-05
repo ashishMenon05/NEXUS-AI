@@ -27,7 +27,7 @@ class NexusEnvironment:
             "hard": HardGrader()
         }
 
-    async def reset(self, task: str = "software-incident", scenario_id: str = None, custom_scenario: dict = None) -> NexusObservation:
+    async def reset(self, task: str = "software-incident", scenario_id: str = None, custom_scenario: dict = None, seed: int = None) -> NexusObservation:
         # Determine difficulty from task
         difficulty = "easy"
         if task == "business-process-failure":
@@ -49,6 +49,8 @@ class NexusEnvironment:
             if not scenarios:
                 raise ValueError(f"No scenarios found for difficulty {difficulty}")
             import random
+            if seed is not None:
+                random.seed(seed)
             scenario = random.choice(scenarios)
             
         self.active_scenario = scenario

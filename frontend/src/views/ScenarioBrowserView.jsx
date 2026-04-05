@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const ALL_SCENARIOS = [
+const STATIC_SCENARIOS = [
     {
         id: 1,
         title: 'GHOST LINK INFILTRATION',
@@ -58,15 +58,41 @@ const ALL_SCENARIOS = [
     }
 ];
 
-const FILTERS = ['ALL', 'CRITICAL', 'COMPLIANCE'];
+const DIFFICULTY_MAP = { easy: 2, medium: 3, hard: 5 };
+const DOMAIN_ICON_MAP = { API: 'api', BACKEND: 'settings', INFRASTRUCTURE: 'dns', NETWORK: 'lan', DATABASE: 'database', CLOUD: 'cloud', CUSTOM: 'extension' };
+
+function mapBackendScenario(s, index) {
+    const diffNum = DIFFICULTY_MAP[s.difficulty] || 3;
+    const domain = (s.domain || 'BACKEND').toUpperCase();
+    return {
+        id: `backend-${s.id}`,
+        backendId: s.id,
+        title: (s.title || s.id).toUpperCase(),
+        domain,
+        difficulty: `LEVEL ${diffNum}`,
+        difficultyNum: diffNum,
+        description: s.description || '',
+        accent: index % 2 === 0 ? 'primary' : 'secondary',
+        icon: DOMAIN_ICON_MAP[domain] || 'bug_report',
+        tag: s.difficulty === 'hard' ? 'CRITICAL' : s.difficulty === 'medium' ? 'COMPLIANCE' : null,
+        isBackend: true,
+        backendTask: s.id.includes('business') ? 'business-process-failure'
+            : s.id.includes('cascade') ? 'cascade-system-failure'
+            : 'software-incident',
+    };
+}
+
+const FILTERS = ['ALL', 'CRITICAL', 'COMPLIANCE', 'CUSTOM'];
 
 const ScenarioBrowserView = () => {
-    const [scenarios, setScenarios] = useState(() => {
+    const [backendScenarios, setBackendScenarios] = useState([]);
+    const [loadingBackend, setLoadingBackend] = useState(true);
+    const [customScenarios, setCustomScenarios] = useState(() => {
         try {
             const saved = localStorage.getItem('nexus_custom_scenarios');
-            return saved ? [...ALL_SCENARIOS, ...JSON.parse(saved)] : ALL_SCENARIOS;
+            return saved ? JSON.parse(saved) : [];
         } catch {
-            return ALL_SCENARIOS;
+            return [];
         }
     });
 
@@ -74,33 +100,49 @@ const ScenarioBrowserView = () => {
     const [sortBy, setSortBy] = useState('id');
     const [isCreating, setIsCreating] = useState(false);
 
+    useEffect(() => {
+        fetch('http://localhost:7860/scenarios')
+            .then(r => r.json())
+            .then(data => {
+                const allBackend = [
+                    ...(data.easy || []),
+                    ...(data.medium || []),
+                    ...(data.hard || []),
+                ].map((s, i) => mapBackendScenario(s, i));
+                setBackendScenarios(allBackend);
+            })
+            .catch(() => setBackendScenarios([]))
+            .finally(() => setLoadingBackend(false));
+    }, []);
+
+    const allScenarios = [...STATIC_SCENARIOS, ...backendScenarios, ...customScenarios];
+
     const defaultForm = { title: '', domain: 'CUSTOM', difficulty: 'LEVEL 3', difficultyNum: 3, description: '', accent: 'primary', icon: 'extension', tag: 'CUSTOM' };
     const [form, setForm] = useState(defaultForm);
 
     const handleSave = () => {
         if (!form.title.trim() || !form.description.trim()) return;
         const newScenario = { ...form, id: Date.now(), isCustom: true };
-        const updatedScenarios = [...scenarios, newScenario];
-        setScenarios(updatedScenarios);
-        localStorage.setItem('nexus_custom_scenarios', JSON.stringify(updatedScenarios.filter(s => s.isCustom)));
+        const updated = [...customScenarios, newScenario];
+        setCustomScenarios(updated);
+        localStorage.setItem('nexus_custom_scenarios', JSON.stringify(updated));
         setIsCreating(false);
         setForm(defaultForm);
     };
 
     const handleDelete = (e, id) => {
         e.stopPropagation();
-        const updatedScenarios = scenarios.filter(s => s.id !== id);
-        setScenarios(updatedScenarios);
-        localStorage.setItem('nexus_custom_scenarios', JSON.stringify(updatedScenarios.filter(s => s.isCustom)));
+        const updated = customScenarios.filter(s => s.id !== id);
+        setCustomScenarios(updated);
+        localStorage.setItem('nexus_custom_scenarios', JSON.stringify(updated));
     };
 
     const injectScenario = async (scenario) => {
         try {
-            await fetch("http://localhost:7860/reset", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    task: "custom-incident",
+            const body = scenario.isBackend
+                ? { task: scenario.backendTask, seed: 42 }
+                : {
+                    task: 'custom-incident',
                     custom_scenario: {
                         id: scenario.title,
                         description: scenario.description,
@@ -108,17 +150,21 @@ const ScenarioBrowserView = () => {
                         difficulty: scenario.difficulty,
                         clue_map: {}
                     }
-                })
+                };
+            await fetch('http://localhost:7860/reset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
             });
             window.location.hash = '#';
         } catch (e) {
-            console.error("Failed to inject", e);
+            console.error('Failed to inject', e);
         }
     };
 
-    const filtered = scenarios
+    const filtered = allScenarios
         .filter(s => activeFilter === 'ALL' || s.tag === activeFilter)
-        .sort((a, b) => sortBy === 'difficulty' ? b.difficultyNum - a.difficultyNum : a.id - b.id);
+        .sort((a, b) => sortBy === 'difficulty' ? b.difficultyNum - a.difficultyNum : 0);
 
     const accentClasses = {
         primary: { text: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' },
@@ -131,18 +177,21 @@ const ScenarioBrowserView = () => {
                 <div className="space-y-2">
                     <div className="flex items-center gap-2 text-primary font-mono text-[10px] tracking-[0.2em] uppercase">
                         <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-                        Scenario Registry v2.4 — {filtered.length} results
+                        Scenario Registry v2.5 — {filtered.length} results
+                        {loadingBackend && <span className="text-slate-500 ml-2">· Fetching live scenarios...</span>}
+                        {!loadingBackend && backendScenarios.length > 0 && (
+                            <span className="text-green-500 ml-2">· {backendScenarios.length} Live scenarios loaded</span>
+                        )}
                     </div>
                     <h1 className="text-4xl font-headline font-bold text-on-surface tracking-tight uppercase">Nexus Scenario Browser</h1>
                     <p className="text-on-surface-variant max-w-xl text-sm leading-relaxed">
-                        Select a tactical simulation to begin intelligence harvesting. Each scenario represents a live threat vector mapped to neural defense protocols.
+                        Select a tactical simulation to begin intelligence harvesting. Live scenarios are fetched from the backend engine in real-time.
                     </p>
                 </div>
 
                 <div className="flex flex-col gap-3 items-end">
-                    {/* Filter Pills */}
                     <div className="flex items-center gap-1 bg-surface-container-lowest p-1 rounded border border-white/5">
-                        {['ALL', 'CRITICAL', 'COMPLIANCE', 'CUSTOM'].map(f => (
+                        {FILTERS.map(f => (
                             <button
                                 key={f}
                                 onClick={() => setActiveFilter(f)}
@@ -160,7 +209,6 @@ const ScenarioBrowserView = () => {
                             <span className="material-symbols-outlined text-[14px]">add</span> NEW SCENARIO
                         </button>
                     </div>
-                    {/* Sort */}
                     <div className="flex items-center gap-2">
                         <span className="text-[9px] font-mono text-slate-600 uppercase">Sort:</span>
                         <button
@@ -193,13 +241,6 @@ const ScenarioBrowserView = () => {
                             <label className="text-[10px] font-mono uppercase text-on-surface-variant">Difficulty ({form.difficultyNum}/5)</label>
                             <input type="range" min="1" max="5" value={form.difficultyNum} onChange={e => setForm({ ...form, difficultyNum: parseInt(e.target.value), difficulty: `LEVEL ${e.target.value}` })} className="w-32 accent-primary" />
                         </div>
-                        <div className="flex items-center gap-4">
-                            <label className="text-[10px] font-mono uppercase text-on-surface-variant">Accent</label>
-                            <select className="bg-surface text-sm p-1 rounded font-mono border border-white/5 text-on-surface" value={form.accent} onChange={e => setForm({ ...form, accent: e.target.value })}>
-                                <option value="primary">Primary</option>
-                                <option value="secondary">Secondary</option>
-                            </select>
-                        </div>
                         <div className="flex items-center gap-2">
                             <button onClick={() => setIsCreating(false)} className="px-4 py-2 text-xs font-mono text-on-surface-variant hover:text-white transition-colors">CANCEL</button>
                             <button onClick={handleSave} className="px-6 py-2 bg-primary text-black font-bold text-xs uppercase font-mono rounded hover:bg-primary/90 transition-colors">SAVE SCENARIO</button>
@@ -225,9 +266,13 @@ const ScenarioBrowserView = () => {
                                     <div className={`absolute inset-0 ${ac.bg} opacity-30 group-hover:opacity-60 transition-opacity`}></div>
                                     <span className={`material-symbols-outlined text-5xl ${ac.text} opacity-20 group-hover:opacity-40 transition-opacity`}>{s.icon}</span>
                                     {s.tag && (
-                                        <div className={`absolute top-3 right-3 backdrop-blur-md px-2 py-0.5 rounded-sm z-20 border ${s.tag === 'CRITICAL' ? 'bg-error/20 border-error/30' : 'bg-tertiary/20 border-tertiary/30'
-                                            }`}>
+                                        <div className={`absolute top-3 right-3 backdrop-blur-md px-2 py-0.5 rounded-sm z-20 border ${s.tag === 'CRITICAL' ? 'bg-error/20 border-error/30' : 'bg-tertiary/20 border-tertiary/30'}`}>
                                             <span className={`text-[9px] font-mono font-bold tracking-widest uppercase ${s.tag === 'CRITICAL' ? 'text-error' : 'text-tertiary'}`}>{s.tag}</span>
+                                        </div>
+                                    )}
+                                    {s.isBackend && (
+                                        <div className="absolute top-3 left-3 backdrop-blur-md px-2 py-0.5 rounded-sm z-20 border bg-green-500/20 border-green-500/30">
+                                            <span className="text-[9px] font-mono font-bold tracking-widest uppercase text-green-400">LIVE</span>
                                         </div>
                                     )}
                                     {s.isCustom && (
