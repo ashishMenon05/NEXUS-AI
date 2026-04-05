@@ -9,30 +9,30 @@ const useWebSocket = (url) => {
         step: 0,
         reward: 0,
         cumulativeReward: 0,
-        agent_a_model: 'dolphin-phi',
-        agent_b_model: 'qwen2.5:3b',
+        agent_a_model: '',
+        agent_b_model: '',
         agents: {
             agent_a: { status: 'STANDBY', messages: [] },
             agent_b: { status: 'STANDBY', messages: [] }
         }
     });
-    
+
     const [isConnected, setIsConnected] = useState(false);
     const [error, setError] = useState(null);
     const socketRef = useRef(null);
 
     useEffect(() => {
         socketRef.current = new WebSocket(url);
-        
+
         socketRef.current.onopen = () => setIsConnected(true);
-        
+
         socketRef.current.onmessage = (event) => {
             const data = JSON.parse(event.data);
             setEvents(prev => [...prev, data]);
-            
+
             setGameState(prev => {
                 const draft = { ...prev };
-                
+
                 if (data.type === 'episode_start') {
                     draft.scenario = data.scenario;
                     draft.active = true;
@@ -45,7 +45,7 @@ const useWebSocket = (url) => {
                     draft.agents.agent_a = { status: 'ACTIVE', messages: [] };
                     draft.agents.agent_b = { status: 'ACTIVE', messages: [] };
                 }
-                
+
                 if (data.type === 'agent_partial') {
                     const agent = draft.agents[data.agent_id];
                     if (agent) {
@@ -77,51 +77,51 @@ const useWebSocket = (url) => {
                         }
                     }
                 }
-                
+
                 if (data.type === 'system_status') {
                     if (data.paused !== undefined) {
                         draft.status = data.paused ? 'PAUSED' : 'INVESTIGATING';
                     }
                 }
-                
+
                 if (data.type === 'tool_call') {
                     if (draft.agents[data.agent_id]) {
-                         draft.agents[data.agent_id].messages.push({
-                             type: 'tool_call',
-                             tool_name: data.tool_name,
-                             params: data.params
-                         });
+                        draft.agents[data.agent_id].messages.push({
+                            type: 'tool_call',
+                            tool_name: data.tool_name,
+                            params: data.params
+                        });
                     }
                 }
 
                 if (data.type === 'tool_result') {
                     draft.agents.agent_a.messages.push({
-                         type: 'tool_result',
-                         tool_name: data.tool_name,
-                         result: data.result,
-                         success: data.success
+                        type: 'tool_result',
+                        tool_name: data.tool_name,
+                        result: data.result,
+                        success: data.success
                     });
                 }
-                
+
                 if (data.type === 'reward_update') {
                     draft.reward = data.reward;
                     draft.cumulativeReward = data.cumulative;
                 }
-                
+
                 if (data.type === 'episode_end') {
                     draft.active = false;
                     draft.status = 'COMPLETED';
                     draft.agents.agent_a.status = 'STANDBY';
                     draft.agents.agent_b.status = 'STANDBY';
                 }
-                
+
                 return draft;
             });
         };
-        
+
         socketRef.current.onerror = (err) => setError(err);
         socketRef.current.onclose = () => setIsConnected(false);
-        
+
         return () => socketRef.current.close();
     }, [url]);
 

@@ -87,7 +87,7 @@ class ModelManager:
         return self.ollama.pull_model(model_name)
         
     def _update_env_file(self, overrides: dict):
-        env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+        env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "default.env")
         if not os.path.exists(env_path):
             return
             

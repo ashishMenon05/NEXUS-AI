@@ -61,8 +61,38 @@ const ALL_SCENARIOS = [
 const FILTERS = ['ALL', 'CRITICAL', 'COMPLIANCE'];
 
 const ScenarioBrowserView = () => {
+    const [scenarios, setScenarios] = useState(() => {
+        try {
+            const saved = localStorage.getItem('nexus_custom_scenarios');
+            return saved ? [...ALL_SCENARIOS, ...JSON.parse(saved)] : ALL_SCENARIOS;
+        } catch {
+            return ALL_SCENARIOS;
+        }
+    });
+
     const [activeFilter, setActiveFilter] = useState('ALL');
     const [sortBy, setSortBy] = useState('id');
+    const [isCreating, setIsCreating] = useState(false);
+
+    const defaultForm = { title: '', domain: 'CUSTOM', difficulty: 'LEVEL 3', difficultyNum: 3, description: '', accent: 'primary', icon: 'extension', tag: 'CUSTOM' };
+    const [form, setForm] = useState(defaultForm);
+
+    const handleSave = () => {
+        if (!form.title.trim() || !form.description.trim()) return;
+        const newScenario = { ...form, id: Date.now(), isCustom: true };
+        const updatedScenarios = [...scenarios, newScenario];
+        setScenarios(updatedScenarios);
+        localStorage.setItem('nexus_custom_scenarios', JSON.stringify(updatedScenarios.filter(s => s.isCustom)));
+        setIsCreating(false);
+        setForm(defaultForm);
+    };
+
+    const handleDelete = (e, id) => {
+        e.stopPropagation();
+        const updatedScenarios = scenarios.filter(s => s.id !== id);
+        setScenarios(updatedScenarios);
+        localStorage.setItem('nexus_custom_scenarios', JSON.stringify(updatedScenarios.filter(s => s.isCustom)));
+    };
 
     const injectScenario = async (scenario) => {
         try {
@@ -72,10 +102,10 @@ const ScenarioBrowserView = () => {
                 body: JSON.stringify({
                     task: "custom-incident",
                     custom_scenario: {
-                        id: `id_${Date.now()}`,
-                        description: `[${scenario.title}] ${scenario.description}`,
+                        id: scenario.title,
+                        description: scenario.description,
                         context: `Domain: ${scenario.domain}`,
-                        difficulty: "medium",
+                        difficulty: scenario.difficulty,
                         clue_map: {}
                     }
                 })
@@ -86,7 +116,7 @@ const ScenarioBrowserView = () => {
         }
     };
 
-    const filtered = ALL_SCENARIOS
+    const filtered = scenarios
         .filter(s => activeFilter === 'ALL' || s.tag === activeFilter)
         .sort((a, b) => sortBy === 'difficulty' ? b.difficultyNum - a.difficultyNum : a.id - b.id);
 
@@ -112,18 +142,23 @@ const ScenarioBrowserView = () => {
                 <div className="flex flex-col gap-3 items-end">
                     {/* Filter Pills */}
                     <div className="flex items-center gap-1 bg-surface-container-lowest p-1 rounded border border-white/5">
-                        {FILTERS.map(f => (
+                        {['ALL', 'CRITICAL', 'COMPLIANCE', 'CUSTOM'].map(f => (
                             <button
                                 key={f}
                                 onClick={() => setActiveFilter(f)}
                                 className={`px-4 py-1.5 text-[10px] font-mono tracking-widest rounded-sm transition-all ${activeFilter === f
-                                        ? 'bg-primary text-black font-bold'
-                                        : 'text-on-surface-variant hover:text-on-surface'
+                                    ? 'bg-primary text-black font-bold'
+                                    : 'text-on-surface-variant hover:text-on-surface'
                                     }`}
                             >
                                 {f}
                             </button>
                         ))}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => setIsCreating(true)} className="flex items-center gap-1 font-mono text-[10px] font-bold text-primary border border-primary/20 px-3 py-1.5 rounded hover:bg-primary/10 transition-colors uppercase">
+                            <span className="material-symbols-outlined text-[14px]">add</span> NEW SCENARIO
+                        </button>
                     </div>
                     {/* Sort */}
                     <div className="flex items-center gap-2">
@@ -143,6 +178,35 @@ const ScenarioBrowserView = () => {
                     </div>
                 </div>
             </header>
+
+            {isCreating && (
+                <div className="glass-panel p-6 rounded-lg border border-primary/20 bg-surface-container-highest flex flex-col gap-4 animate-in slide-in-from-top-4 duration-300">
+                    <h2 className="text-xl font-headline font-bold text-on-surface uppercase">Create Custom Scenario</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="text" placeholder="Scenario Title (e.g. INTRUSION)" className="bg-surface p-2 rounded border border-white/5 text-sm text-on-surface font-mono" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+                        <input type="text" placeholder="Domain (e.g. ENDPOINT)" className="bg-surface p-2 rounded border border-white/5 text-sm text-on-surface font-mono" value={form.domain} onChange={e => setForm({ ...form, domain: e.target.value })} />
+                    </div>
+                    <textarea placeholder="Detailed description of the incident..." className="bg-surface p-2 rounded border border-white/5 text-sm text-on-surface flex-1 min-h-[80px]" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}></textarea>
+
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            <label className="text-[10px] font-mono uppercase text-on-surface-variant">Difficulty ({form.difficultyNum}/5)</label>
+                            <input type="range" min="1" max="5" value={form.difficultyNum} onChange={e => setForm({ ...form, difficultyNum: parseInt(e.target.value), difficulty: `LEVEL ${e.target.value}` })} className="w-32 accent-primary" />
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <label className="text-[10px] font-mono uppercase text-on-surface-variant">Accent</label>
+                            <select className="bg-surface text-sm p-1 rounded font-mono border border-white/5 text-on-surface" value={form.accent} onChange={e => setForm({ ...form, accent: e.target.value })}>
+                                <option value="primary">Primary</option>
+                                <option value="secondary">Secondary</option>
+                            </select>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => setIsCreating(false)} className="px-4 py-2 text-xs font-mono text-on-surface-variant hover:text-white transition-colors">CANCEL</button>
+                            <button onClick={handleSave} className="px-6 py-2 bg-primary text-black font-bold text-xs uppercase font-mono rounded hover:bg-primary/90 transition-colors">SAVE SCENARIO</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {filtered.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -165,6 +229,11 @@ const ScenarioBrowserView = () => {
                                             }`}>
                                             <span className={`text-[9px] font-mono font-bold tracking-widest uppercase ${s.tag === 'CRITICAL' ? 'text-error' : 'text-tertiary'}`}>{s.tag}</span>
                                         </div>
+                                    )}
+                                    {s.isCustom && (
+                                        <button onClick={(e) => handleDelete(e, s.id)} className="absolute top-3 left-3 bg-surface border border-error/20 text-error hover:bg-error hover:text-white p-1 rounded transition-colors opacity-0 group-hover:opacity-100 z-20">
+                                            <span className="material-symbols-outlined text-[14px]">delete</span>
+                                        </button>
                                     )}
                                 </div>
                                 <div className="p-6 flex flex-col flex-1 space-y-4">

@@ -12,7 +12,7 @@ const OllamaModelPicker = ({ value, onChange, accentColor }) => {
             const res = await fetch('http://localhost:7860/models');
             if (!res.ok) throw new Error('Backend not reachable');
             const data = await res.json();
-            setModels((data.local_models || []).map(m => ({name: m})));
+            setModels((data.local_models || []).map(m => ({ name: m })));
         } catch (e) {
             setError('Backend offline or Ollama disconnected');
             setModels([]);
@@ -22,6 +22,16 @@ const OllamaModelPicker = ({ value, onChange, accentColor }) => {
     };
 
     useEffect(() => { fetchModels(); }, []);
+
+    useEffect(() => {
+        if (models.length > 0 && value !== undefined) {
+            const isInstalled = models.some(m => m.name === value);
+            if (!isInstalled) {
+                onChange(models[0].name);
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [models, value]);
 
     const borderClass = accentColor === 'primary' ? 'border-primary/30 focus:border-primary' : 'border-secondary/30 focus:border-secondary';
     const textClass = accentColor === 'primary' ? 'text-primary' : 'text-secondary';
@@ -44,20 +54,18 @@ const OllamaModelPicker = ({ value, onChange, accentColor }) => {
                     <span className="text-[10px] font-mono text-error">{error}</span>
                 </div>
             ) : (
-                <>
-                    <input
-                        list={`models-${accentColor}`}
-                        value={value}
-                        onChange={e => onChange(e.target.value)}
-                        placeholder="Type or select a local model..."
-                        className={`w-full bg-surface-container-lowest border-b ${borderClass} py-2 font-mono text-sm text-on-surface cursor-text focus:outline-none transition-all`}
-                    />
-                    <datalist id={`models-${accentColor}`}>
-                        {models.map(m => (
-                            <option key={m.name} value={m.name} />
-                        ))}
-                    </datalist>
-                </>
+                <select
+                    value={value}
+                    onChange={e => onChange(e.target.value)}
+                    className={`w-full bg-surface-container-lowest border-b ${borderClass} py-2 font-mono text-sm text-on-surface cursor-pointer focus:outline-none transition-all`}
+                >
+                    {models.length === 0 && <option value={value}>{value || "No models found"}</option>}
+                    {models.length > 0 && !models.find(m => m.name === value) && value && <option value={value}>{value} (Not installed locally)</option>}
+                    {models.length > 0 && !value && <option value="" disabled>Select a model...</option>}
+                    {models.map(m => (
+                        <option key={m.name} value={m.name}>{m.name}</option>
+                    ))}
+                </select>
             )}
             {models.length > 0 && (
                 <p className={`text-[9px] font-mono ${textClass} opacity-50 text-right mt-1`}>{models.length} model{models.length !== 1 ? 's' : ''} available locally</p>
@@ -120,12 +128,30 @@ const SettingsView = () => {
         }
     };
 
+    // Auto-sync active settings so navigation doesn't wipe them
+    useEffect(() => {
+        if (!agentA.model && !agentB.model) return; // Wait for initial load or valid models
+        fetch('http://localhost:7860/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                MAX_STEPS: maxSteps,
+                AGENT_A_MODEL: agentA.provider === 'ollama' ? agentA.model : agentA.hfModel,
+                AGENT_B_MODEL: agentB.provider === 'ollama' ? agentB.model : agentB.hfModel,
+                AGENT_A_PROVIDER: agentA.provider,
+                AGENT_B_PROVIDER: agentB.provider,
+                AGENT_A_TEMPERATURE: agentA.temp,
+                AGENT_B_TEMPERATURE: agentB.temp
+            })
+        }).catch(e => { });
+    }, [agentA, agentB, maxSteps]);
+
     const ProviderToggle = ({ agent, agentId, onSetAgent }) => (
         <div className="flex gap-2 p-1 bg-surface-container-highest rounded-lg border border-white/5">
             {['ollama', 'hf'].map(p => (
                 <button
                     key={p}
-                    onClick={() => onSetAgent(a => ({...a, provider: p}))}
+                    onClick={() => onSetAgent(a => ({ ...a, provider: p }))}
                     className={`flex-1 py-1 px-3 rounded text-[10px] font-mono font-bold uppercase transition-all ${agent.provider === p ? (agentId === 'A' ? 'bg-primary text-black' : 'bg-secondary text-black') : 'text-outline-variant hover:text-white'}`}
                 >
                     {p === 'ollama' ? 'Local Ollama' : 'Hugging Face'}
@@ -308,7 +334,7 @@ const SettingsView = () => {
                 </div>
                 <div className="flex items-center gap-4">
                     <button
-                        onClick={() => { setAgentA(a => ({...a, model: '', provider: 'ollama'})); setAgentB(b => ({...b, model: '', provider: 'ollama'})); setMaxSteps(12); }}
+                        onClick={() => { setAgentA(a => ({ ...a, model: '', provider: 'ollama' })); setAgentB(b => ({ ...b, model: '', provider: 'ollama' })); setMaxSteps(12); }}
                         className="px-8 py-3 bg-surface-container-high text-on-surface-variant font-headline font-bold text-sm tracking-widest rounded hover:bg-surface-container-highest hover:text-white transition-all uppercase"
                     >
                         Reset

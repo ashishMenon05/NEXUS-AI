@@ -1,15 +1,9 @@
 from pydantic import BaseModel
-from sentence_transformers import SentenceTransformer, util
+from utils.embeddings import get_embedding, cos_sim
 
 class ProposeFixParams(BaseModel):
     description: str
     target: str
-
-# Use a global instance or pass it in if preloaded
-try:
-    model = SentenceTransformer('all-MiniLM-L6-v2')
-except:
-    model = None
 
 def tool_propose_fix(params: dict, scenario: dict, round_num: int, episode_state=None) -> str:
     description = params.get("description", "").lower()
@@ -29,10 +23,10 @@ def tool_propose_fix(params: dict, scenario: dict, round_num: int, episode_state
         is_correct = True
         
     # 2. Semantic check (fallback/enhancement)
-    if not is_correct and model is not None:
-        target_embedding = model.encode(correct_fix.get("description", ""))
-        desc_embedding = model.encode(description)
-        sim = util.cos_sim(desc_embedding, target_embedding).item()
+    if not is_correct:
+        target_embedding = get_embedding(correct_fix.get("description", ""))
+        desc_embedding = get_embedding(description)
+        sim = cos_sim(desc_embedding, target_embedding)
         if sim >= 0.65:
             is_correct = True
 

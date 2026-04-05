@@ -43,6 +43,18 @@ def update_config(req: ConfigUpdate):
     settings.AGENT_A_TEMPERATURE = req.AGENT_A_TEMPERATURE
     settings.AGENT_B_TEMPERATURE = req.AGENT_B_TEMPERATURE
     
+    # Persist to default.env
+    from models.model_manager import model_manager
+    model_manager._update_env_file({
+        "MAX_STEPS": req.MAX_STEPS,
+        "AGENT_A_MODEL": req.AGENT_A_MODEL,
+        "AGENT_B_MODEL": req.AGENT_B_MODEL,
+        "AGENT_A_PROVIDER": req.AGENT_A_PROVIDER,
+        "AGENT_B_PROVIDER": req.AGENT_B_PROVIDER,
+        "AGENT_A_TEMPERATURE": req.AGENT_A_TEMPERATURE,
+        "AGENT_B_TEMPERATURE": req.AGENT_B_TEMPERATURE
+    })
+    
     return {"status": "success", "message": "Config updated for next episode"}
 
 @router.post("/pause")

@@ -36,7 +36,7 @@ const AgentTerminal = ({ agentName, model, status, accentColor, icon, messages }
                     </div>
                     <div>
                         <h2 className={`text-sm font-bold font-headline ${textColor} tracking-wider uppercase`}>{agentName}</h2>
-                        <p className="text-[10px] font-mono text-outline-variant uppercase">MODEL: {model}</p>
+                        <p className="text-[10px] font-mono text-outline-variant uppercase">MODEL: {model || '[UNCONFIGURED]'}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -51,7 +51,7 @@ const AgentTerminal = ({ agentName, model, status, accentColor, icon, messages }
                 <div className="text-on-surface/40 text-xs italic whitespace-pre-wrap">
                     {accentColor === 'cyan' ? '// System initialized. Awaiting objective...' : '// System initialized. Awaiting investigator output...'}
                 </div>
-                
+
                 {messages && messages.map((msg, i) => (
                     <div key={i} className="text-sm">
                         {msg.type === 'message' && (

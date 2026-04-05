@@ -13,8 +13,8 @@ class Settings:
     OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "ollama")
 
     # AGENTS
-    AGENT_A_MODEL = os.getenv("AGENT_A_MODEL", "dolphin-phi")
-    AGENT_B_MODEL = os.getenv("AGENT_B_MODEL", "qwen2.5:3b")
+    AGENT_A_MODEL = os.getenv("AGENT_A_MODEL", "")
+    AGENT_B_MODEL = os.getenv("AGENT_B_MODEL", "")
     AGENT_A_PROVIDER = os.getenv("AGENT_A_PROVIDER", "ollama") # or "hf"
     AGENT_B_PROVIDER = os.getenv("AGENT_B_PROVIDER", "ollama")
     AGENT_A_TEMPERATURE = float(os.getenv("AGENT_A_TEMPERATURE", "0.8"))
@@ -30,7 +30,7 @@ class Settings:
 
     # COMPETITION
     API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:11434/v1")
-    MODEL_NAME = os.getenv("MODEL_NAME", "dolphin-phi")
+    MODEL_NAME = os.getenv("MODEL_NAME", "")
     API_KEY = os.getenv("API_KEY", "ollama")
 
     # SERVER

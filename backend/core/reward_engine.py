@@ -1,13 +1,7 @@
-from sentence_transformers import SentenceTransformer, util
+from utils.embeddings import get_embedding, cos_sim
 import logging
 
 logger = logging.getLogger("nexus.reward_engine")
-
-try:
-    model = SentenceTransformer('all-MiniLM-L6-v2')
-except Exception as e:
-    logger.error(f"Failed to load sentence transformer: {e}")
-    model = None
 
 def compute_reward(message: str, tool_calls: list, tool_results: list, episode_state, scenario: dict) -> tuple[float, dict]:
     breakdown = {}
@@ -22,22 +16,22 @@ def compute_reward(message: str, tool_calls: list, tool_results: list, episode_s
     )
 
     # 2. PARTNER ENGAGEMENT (0.0-0.20)
-    if episode_state.last_partner_message and model:
-        sim = util.cos_sim(
-            model.encode(message),
-            model.encode(episode_state.last_partner_message)
-        ).item()
+    if episode_state.last_partner_message:
+        sim = cos_sim(
+            get_embedding(message),
+            get_embedding(episode_state.last_partner_message)
+        )
         breakdown['partner_engagement'] = min(0.20, sim * 0.25)
     else:
         breakdown['partner_engagement'] = 0.10
 
     # 3. PROGRESS TOWARD ROOT CAUSE (0.0-0.30)
     root_cause_desc = scenario.get('root_cause', {}).get('description', '')
-    if root_cause_desc and model:
-        root_cause_sim = util.cos_sim(
-            model.encode(message),
-            model.encode(root_cause_desc)
-        ).item()
+    if root_cause_desc:
+        root_cause_sim = cos_sim(
+            get_embedding(message),
+            get_embedding(root_cause_desc)
+        )
         breakdown['progress'] = min(0.30, root_cause_sim * 0.40)
     else:
         breakdown['progress'] = 0.15
@@ -54,9 +48,9 @@ def compute_reward(message: str, tool_calls: list, tool_results: list, episode_s
         breakdown['tool_usage'] = 0.0
 
     # 5. NOVELTY (0.0-0.10)
-    if episode_state.all_messages and model:
+    if episode_state.all_messages:
         max_sim_to_history = max(
-            util.cos_sim(model.encode(message), model.encode(prev)).item()
+            cos_sim(get_embedding(message), get_embedding(prev))
             for prev in episode_state.all_messages[-4:]
         )
         breakdown['novelty'] = max(0.0, 0.10 * (1 - max_sim_to_history))

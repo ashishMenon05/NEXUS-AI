@@ -43,19 +43,19 @@ const SystemTelemetryWidget = ({ status, agentAStatus, agentBStatus }) => {
                 let sys = 15 + Math.floor(Math.random() * 10); // baseline system usage
                 let agA = 5 + Math.floor(Math.random() * 5);   // baseline agent A
                 let agB = 5 + Math.floor(Math.random() * 5);   // baseline agent B
-                
+
                 if (status === 'INVESTIGATING') {
                     // if active, bump system a bit
                     sys += 10;
                     if (agentAStatus === 'ACTIVE') { agA += 40 + Math.floor(Math.random() * 40); sys += 15; }
                     if (agentBStatus === 'ACTIVE') { agB += 40 + Math.floor(Math.random() * 40); sys += 15; }
                 }
-                
+
                 // clamp
                 sys = Math.min(100, sys);
                 agA = Math.min(100, agA);
                 agB = Math.min(100, agB);
-                
+
                 next.push({ sys, agA, agB });
                 return next;
             });
@@ -81,7 +81,7 @@ const SystemTelemetryWidget = ({ status, agentAStatus, agentBStatus }) => {
                     <span className="flex items-center gap-1 text-[#10b981]"><span className="w-2 h-2 rounded-full bg-[#10b981]"></span> AGT_B {latest.agB}%</span>
                 </div>
             </div>
-            
+
             <div className="flex-1 min-h-[100px] border-b border-l border-white/10 relative">
                 {/* Y-axis grid lines */}
                 <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20">
@@ -89,20 +89,20 @@ const SystemTelemetryWidget = ({ status, agentAStatus, agentBStatus }) => {
                     <div className="border-t border-dashed border-white/40 h-0"></div>
                     <div className="border-t border-dashed border-white/40 h-0"></div>
                 </div>
-                
+
                 <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full overflow-visible">
                     <defs>
                         <linearGradient id="gradSys" x1="0" x2="0" y1="0" y2="1">
-                            <stop offset="0%" stopColor="#64748b" stopOpacity="0.1"/>
-                            <stop offset="100%" stopColor="#64748b" stopOpacity="0"/>
+                            <stop offset="0%" stopColor="#64748b" stopOpacity="0.1" />
+                            <stop offset="100%" stopColor="#64748b" stopOpacity="0" />
                         </linearGradient>
                         <linearGradient id="gradA" x1="0" x2="0" y1="0" y2="1">
-                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.15"/>
-                            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0"/>
+                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.15" />
+                            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
                         </linearGradient>
                         <linearGradient id="gradB" x1="0" x2="0" y1="0" y2="1">
-                            <stop offset="0%" stopColor="#10b981" stopOpacity="0.15"/>
-                            <stop offset="100%" stopColor="#10b981" stopOpacity="0"/>
+                            <stop offset="0%" stopColor="#10b981" stopOpacity="0.15" />
+                            <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
                         </linearGradient>
                     </defs>
 
@@ -150,6 +150,23 @@ const DashboardView = () => {
     const sc = state.scenario || {};
 
     const [isOverlayDismissed, setIsOverlayDismissed] = useState(false);
+    const [configModels, setConfigModels] = useState({ agent_a: 'Loading...', agent_b: 'Loading...' });
+
+    useEffect(() => {
+        const fetchConfig = async () => {
+            try {
+                const res = await fetch('http://localhost:7860/config');
+                const data = await res.json();
+                setConfigModels({
+                    agent_a: data.models.agent_a || 'Unconfigured',
+                    agent_b: data.models.agent_b || 'Unconfigured'
+                });
+            } catch (e) {
+                console.error("Failed to fetch config models for dashboard", e);
+            }
+        };
+        fetchConfig();
+    }, []);
 
     useEffect(() => {
         if (state.status !== 'COMPLETED') {
@@ -189,17 +206,17 @@ const DashboardView = () => {
 
             {/* Twin Terminals */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <AgentTerminal 
+                <AgentTerminal
                     agentName="Agent A: Investigator"
-                    model={state.agent_a_model || 'dolphin-phi'}
+                    model={state.agent_a_model || configModels.agent_a}
                     status={state.agents.agent_a.status}
                     accentColor="cyan"
                     icon="search"
                     messages={state.agents.agent_a.messages}
                 />
-                <AgentTerminal 
+                <AgentTerminal
                     agentName="Agent B: Validator"
-                    model={state.agent_b_model || 'qwen2.5:3b'}
+                    model={state.agent_b_model || configModels.agent_b}
                     status={state.agents.agent_b.status}
                     accentColor="purple"
                     icon="verified_user"
@@ -235,14 +252,14 @@ const DashboardView = () => {
 
                 {/* Scenario Injector */}
                 <div className="lg:col-span-1">
-                    <DynamicScenarioInjector />
+                    <DynamicScenarioInjector scenario={sc} />
                 </div>
 
                 {/* Live Task Manager Graph */}
-                <SystemTelemetryWidget 
-                    status={state.status || 'STANDBY'} 
-                    agentAStatus={state.agents?.agent_a?.status} 
-                    agentBStatus={state.agents?.agent_b?.status} 
+                <SystemTelemetryWidget
+                    status={state.status || 'STANDBY'}
+                    agentAStatus={state.agents?.agent_a?.status}
+                    agentBStatus={state.agents?.agent_b?.status}
                 />
             </div>
 
@@ -251,7 +268,7 @@ const DashboardView = () => {
             <div className="fixed bottom-0 left-0 w-[400px] h-[400px] bg-secondary/5 rounded-full blur-[100px] pointer-events-none -z-10 -translate-x-1/2 translate-y-1/2"></div>
 
             {/* Episode End Overlay */}
-            <EpisodeEndOverlay 
+            <EpisodeEndOverlay
                 isOpen={state.status === 'COMPLETED' && !isOverlayDismissed}
                 onClose={() => setIsOverlayDismissed(true)}
                 metrics={{
