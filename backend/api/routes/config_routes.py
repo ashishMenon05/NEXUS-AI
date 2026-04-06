@@ -21,7 +21,9 @@ class ConfigUpdate(BaseModel):
     SSH_HOST: str = ""
     SSH_PORT: int = 22
     SSH_USER: str = ""
+    SSH_USER: str = ""
     SSH_PASSWORD: str = ""
+    OPENAI_API_KEY: str = ""
 
 @router.get("/config")
 def get_config():
@@ -37,7 +39,8 @@ def get_config():
             "agent_a_system_prompt": settings.AGENT_A_SYSTEM_PROMPT,
             "agent_b_system_prompt": settings.AGENT_B_SYSTEM_PROMPT,
             "agent_a_temp": settings.AGENT_A_TEMPERATURE,
-            "agent_b_temp": settings.AGENT_B_TEMPERATURE
+            "agent_b_temp": settings.AGENT_B_TEMPERATURE,
+            "openai_api_key": settings.OPENAI_API_KEY
         },
         "episode": {
             "max_steps": settings.MAX_STEPS,
@@ -71,6 +74,7 @@ def update_config(req: ConfigUpdate):
     settings.SSH_PORT = req.SSH_PORT
     settings.SSH_USER = req.SSH_USER
     settings.SSH_PASSWORD = req.SSH_PASSWORD
+    settings.OPENAI_API_KEY = req.OPENAI_API_KEY
     
     # Persist to default.env
     from models.model_manager import model_manager
@@ -90,7 +94,8 @@ def update_config(req: ConfigUpdate):
         "SSH_HOST": req.SSH_HOST,
         "SSH_PORT": req.SSH_PORT,
         "SSH_USER": req.SSH_USER,
-        "SSH_PASSWORD": req.SSH_PASSWORD
+        "SSH_PASSWORD": req.SSH_PASSWORD,
+        "OPENAI_API_KEY": req.OPENAI_API_KEY
     })
     
     return {"status": "success", "message": "Config updated for next episode"}
