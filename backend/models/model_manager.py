@@ -35,6 +35,10 @@ class ModelManager:
             
         if provider == "hf" and self.hf:
             return self.hf.get_client(), model_name
+        elif provider == "openai":
+            # We spin up OpenAI dynamically pulling the global OpenAI Key
+            client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+            return client, model_name
         
         return self.ollama.get_client(), model_name
 

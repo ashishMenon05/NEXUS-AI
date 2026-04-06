@@ -34,10 +34,10 @@ from dotenv import load_dotenv
 load_dotenv(ROOT / "backend" / ".env")
 
 # ── Required variables ─────────────────────────────────────────────────────────
-API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:11434/v1")
-MODEL_NAME   = os.environ.get("MODEL_NAME",   "dolphin-phi:2.7b")
+API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
+MODEL_NAME   = os.environ.get("MODEL_NAME",   "gpt-4o")
 HF_TOKEN     = os.environ.get("HF_TOKEN",     "")
-API_KEY      = HF_TOKEN if HF_TOKEN else os.environ.get("API_KEY", "ollama")
+API_KEY      = os.environ.get("OPENAI_API_KEY", HF_TOKEN) if os.environ.get("OPENAI_API_KEY", HF_TOKEN) else os.environ.get("API_KEY", "ollama")
 
 # ── OpenAI client (required by competition spec) ───────────────────────────────
 from openai import OpenAI

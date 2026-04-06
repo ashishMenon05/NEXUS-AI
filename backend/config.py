@@ -42,6 +42,7 @@ class Settings:
     API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:11434/v1")
     MODEL_NAME = os.getenv("MODEL_NAME", "")
     API_KEY = os.getenv("API_KEY", "ollama")
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
     # SERVER
     HOST = os.getenv("HOST", "0.0.0.0")

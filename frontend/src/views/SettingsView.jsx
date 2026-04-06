@@ -78,8 +78,9 @@ const OllamaModelPicker = ({ value, onChange, accentColor }) => {
 const ROLES = ["INVESTIGATOR", "VALIDATOR", "FORENSIC_ANALYST", "NETWORK_ENGINEER", "SYSTEM_ADMIN", "SECURITY_ARCHITECT", "COMPLIANCE_OFFICER", "CUSTOM_ROLE"];
 
 const SettingsView = () => {
-    const [agentA, setAgentA] = useState({ provider: 'ollama', model: '', hfModel: 'microsoft/Phi-3-mini-4k-instruct', temp: 0.8, role: 'INVESTIGATOR', customRoleName: '', customPrompt: '' });
-    const [agentB, setAgentB] = useState({ provider: 'ollama', model: '', hfModel: 'Qwen/Qwen2.5-3B-Instruct', temp: 0.6, role: 'VALIDATOR', customRoleName: '', customPrompt: '' });
+    const [agentA, setAgentA] = useState({ provider: 'ollama', model: '', hfModel: 'microsoft/Phi-3-mini-4k-instruct', openaiModel: 'gpt-4o', temp: 0.8, role: 'INVESTIGATOR', customRoleName: '', customPrompt: '' });
+    const [agentB, setAgentB] = useState({ provider: 'ollama', model: '', hfModel: 'Qwen/Qwen2.5-3B-Instruct', openaiModel: 'gpt-4o-mini', temp: 0.6, role: 'VALIDATOR', customRoleName: '', customPrompt: '' });
+    const [openaiKey, setOpenaiKey] = useState('');
     const [maxSteps, setMaxSteps] = useState(12);
     const [complexity, setComplexity] = useState('LEVEL_02: ADVERSARIAL');
     const [saved, setSaved] = useState(false);
@@ -112,6 +113,7 @@ const SettingsView = () => {
                     customRoleName: roleB.startsWith('CUSTOM_') ? roleB.replace('CUSTOM_', '').replace(/_/g, ' ') : '',
                     customPrompt: data.models.agent_b_system_prompt || ''
                 });
+                if (data.models.openai_api_key) setOpenaiKey(data.models.openai_api_key);
                 setMaxSteps(data.episode.max_steps);
                 if (data.execution) {
                     setExecutionMode(data.execution.mode || 'simulated');
@@ -136,8 +138,8 @@ const SettingsView = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     MAX_STEPS: maxSteps,
-                    AGENT_A_MODEL: agentA.provider === 'ollama' ? agentA.model : agentA.hfModel,
-                    AGENT_B_MODEL: agentB.provider === 'ollama' ? agentB.model : agentB.hfModel,
+                    AGENT_A_MODEL: agentA.provider === 'ollama' ? agentA.model : (agentA.provider === 'openai' ? agentA.openaiModel : agentA.hfModel),
+                    AGENT_B_MODEL: agentB.provider === 'ollama' ? agentB.model : (agentB.provider === 'openai' ? agentB.openaiModel : agentB.hfModel),
                     AGENT_A_PROVIDER: agentA.provider,
                     AGENT_B_PROVIDER: agentB.provider,
                     AGENT_A_ROLE: agentA.role === 'CUSTOM_ROLE' ? `CUSTOM_${agentA.customRoleName.replace(/ /g, '_').toUpperCase()}` : agentA.role,
@@ -150,7 +152,8 @@ const SettingsView = () => {
                     SSH_HOST: sshConfig.host,
                     SSH_PORT: sshConfig.port,
                     SSH_USER: sshConfig.user,
-                    SSH_PASSWORD: sshConfig.password
+                    SSH_PASSWORD: sshConfig.password,
+                    OPENAI_API_KEY: openaiKey
                 })
             });
             setSaved(true);
@@ -168,8 +171,8 @@ const SettingsView = () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 MAX_STEPS: maxSteps,
-                AGENT_A_MODEL: agentA.provider === 'ollama' ? agentA.model : agentA.hfModel,
-                AGENT_B_MODEL: agentB.provider === 'ollama' ? agentB.model : agentB.hfModel,
+                AGENT_A_MODEL: agentA.provider === 'ollama' ? agentA.model : (agentA.provider === 'openai' ? agentA.openaiModel : agentA.hfModel),
+                AGENT_B_MODEL: agentB.provider === 'ollama' ? agentB.model : (agentB.provider === 'openai' ? agentB.openaiModel : agentB.hfModel),
                 AGENT_A_PROVIDER: agentA.provider,
                 AGENT_B_PROVIDER: agentB.provider,
                 AGENT_A_ROLE: agentA.role === 'CUSTOM_ROLE' ? `CUSTOM_${agentA.customRoleName.replace(/ /g, '_').toUpperCase()}` : agentA.role,
@@ -182,20 +185,21 @@ const SettingsView = () => {
                 SSH_HOST: sshConfig.host,
                 SSH_PORT: sshConfig.port,
                 SSH_USER: sshConfig.user,
-                SSH_PASSWORD: sshConfig.password
+                SSH_PASSWORD: sshConfig.password,
+                OPENAI_API_KEY: openaiKey
             })
         }).catch(e => { });
-    }, [agentA, agentB, maxSteps, executionMode, sshConfig]);
+    }, [agentA, agentB, maxSteps, executionMode, sshConfig, openaiKey]);
 
     const ProviderToggle = ({ agent, agentId, onSetAgent }) => (
         <div className="flex gap-2 p-1 bg-surface-container-highest rounded-lg border border-white/5">
-            {['ollama', 'hf'].map(p => (
+            {['ollama', 'hf', 'openai'].map(p => (
                 <button
                     key={p}
                     onClick={() => onSetAgent(a => ({ ...a, provider: p }))}
                     className={`flex-1 py-1 px-3 rounded text-[10px] font-mono font-bold uppercase transition-all ${agent.provider === p ? (agentId === 'A' ? 'bg-primary text-black' : 'bg-secondary text-black') : 'text-outline-variant hover:text-white'}`}
                 >
-                    {p === 'ollama' ? 'Local Ollama' : 'Hugging Face'}
+                    {p === 'ollama' ? 'Local Ollama' : (p === 'hf' ? 'Hugging Face' : 'OpenAI')}
                 </button>
             ))}
         </div>
@@ -242,16 +246,41 @@ const SettingsView = () => {
                                 onChange={v => setAgentA(a => ({ ...a, model: v }))}
                                 accentColor="primary"
                             />
+                        ) : agentA.provider === 'hf' ? (
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">HF Model Repo ID</label>
+                                    <input
+                                        className="w-full bg-transparent border-0 border-b border-primary/30 py-2 font-mono text-on-surface focus:outline-none focus:border-primary transition-all placeholder:text-slate-700"
+                                        placeholder="e.g. microsoft/Phi-3-mini-4k-instruct"
+                                        type="text"
+                                        value={agentA.hfModel}
+                                        onChange={e => setAgentA(a => ({ ...a, hfModel: e.target.value }))}
+                                    />
+                                </div>
+                            </div>
                         ) : (
-                            <div className="space-y-2">
-                                <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">HF Model Repo ID</label>
-                                <input
-                                    className="w-full bg-transparent border-0 border-b border-primary/30 py-2 font-mono text-on-surface focus:outline-none focus:border-primary transition-all placeholder:text-slate-700"
-                                    placeholder="e.g. microsoft/Phi-3-mini-4k-instruct"
-                                    type="text"
-                                    value={agentA.hfModel}
-                                    onChange={e => setAgentA(a => ({ ...a, hfModel: e.target.value }))}
-                                />
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">OpenAI API Key</label>
+                                    <input
+                                        className="w-full bg-transparent border-0 border-b border-primary/30 py-2 font-mono text-on-surface focus:outline-none focus:border-primary transition-all placeholder:text-slate-700"
+                                        placeholder="sk-..."
+                                        type="password"
+                                        value={openaiKey}
+                                        onChange={e => setOpenaiKey(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">OpenAI Model Name</label>
+                                    <input
+                                        className="w-full bg-transparent border-0 border-b border-primary/30 py-2 font-mono text-on-surface focus:outline-none focus:border-primary transition-all placeholder:text-slate-700"
+                                        placeholder="gpt-4o"
+                                        type="text"
+                                        value={agentA.openaiModel}
+                                        onChange={e => setAgentA(a => ({ ...a, openaiModel: e.target.value }))}
+                                    />
+                                </div>
                             </div>
                         )}
                         <div className="space-y-4">
@@ -328,16 +357,41 @@ const SettingsView = () => {
                                 onChange={v => setAgentB(b => ({ ...b, model: v }))}
                                 accentColor="secondary"
                             />
+                        ) : agentB.provider === 'hf' ? (
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">HF Model Repo ID</label>
+                                    <input
+                                        className="w-full bg-transparent border-0 border-b border-secondary/30 py-2 font-mono text-on-surface focus:outline-none focus:border-secondary transition-all placeholder:text-slate-700"
+                                        placeholder="e.g. Qwen/Qwen2.5-3B-Instruct"
+                                        type="text"
+                                        value={agentB.hfModel}
+                                        onChange={e => setAgentB(b => ({ ...b, hfModel: e.target.value }))}
+                                    />
+                                </div>
+                            </div>
                         ) : (
-                            <div className="space-y-2">
-                                <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">HF Model Repo ID</label>
-                                <input
-                                    className="w-full bg-transparent border-0 border-b border-secondary/30 py-2 font-mono text-on-surface focus:outline-none focus:border-secondary transition-all placeholder:text-slate-700"
-                                    placeholder="e.g. Qwen/Qwen2.5-3B-Instruct"
-                                    type="text"
-                                    value={agentB.hfModel}
-                                    onChange={e => setAgentB(b => ({ ...b, hfModel: e.target.value }))}
-                                />
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">Global OpenAI API Key</label>
+                                    <input
+                                        className="w-full bg-transparent border-0 border-b border-secondary/30 py-2 font-mono text-on-surface focus:outline-none focus:border-secondary transition-all placeholder:text-slate-700"
+                                        placeholder="sk-..."
+                                        type="password"
+                                        value={openaiKey}
+                                        onChange={e => setOpenaiKey(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">OpenAI Model Name</label>
+                                    <input
+                                        className="w-full bg-transparent border-0 border-b border-secondary/30 py-2 font-mono text-on-surface focus:outline-none focus:border-secondary transition-all placeholder:text-slate-700"
+                                        placeholder="gpt-4o-mini"
+                                        type="text"
+                                        value={agentB.openaiModel}
+                                        onChange={e => setAgentB(b => ({ ...b, openaiModel: e.target.value }))}
+                                    />
+                                </div>
                             </div>
                         )}
                         <div className="space-y-4">

@@ -12,8 +12,8 @@ from api.schemas.action import NexusAction
 from api.schemas.observation import NexusObservation, ToolResult
 from config import settings
 
-SIMULATED_TOOLS = ["read_logs", "check_config", "query_database", "check_service_status", "run_diagnostic", "update_config", "restart_service", "propose_fix", "submit_resolution"]
-SSH_TOOLS = ["run_terminal_command", "propose_fix", "submit_resolution"]
+SIMULATED_TOOLS = ["read_logs", "check_config", "query_database", "check_service_status", "run_diagnostic", "update_config", "restart_service", "propose_fix", "verify_fix", "submit_resolution"]
+SSH_TOOLS = ["run_terminal_command", "propose_fix", "verify_fix", "submit_resolution"]
 
 class NexusEnvironment:
     def __init__(self):
