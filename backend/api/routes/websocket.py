@@ -53,17 +53,22 @@ async def websocket_endpoint(websocket: WebSocket):
                 elif action == "pause":
                     episode_manager.is_paused = not episode_manager.is_paused
                     logger.info(f"UI Command: PAUSE -> {episode_manager.is_paused}")
-                    await broadcast("system_status", {"paused": episode_manager.is_paused})
+                    # Broadcast both the pause flag and a status string for the UI header
+                    await broadcast("system_status", {
+                        "paused": episode_manager.is_paused,
+                        "status": "PAUSED" if episode_manager.is_paused else "INVESTIGATING"
+                    })
                 elif action == "reset":
                     logger.info("UI Command: RESET")
                     await episode_manager.reset(task="software-incident")
-                    await broadcast("system_status", {"paused": False, "status": "READY"})
+                    await broadcast("system_status", {"paused": False, "status": "READY", "active": false})
                 elif action == "force_end":
                     logger.info("UI Command: FORCE_END")
                     if episode_manager.env and episode_manager.env.active_episode:
                         episode_manager.env.active_episode.done = True
                         episode_manager.env.active_episode.fix_verified = True
-                        await broadcast("system_status", {"status": "TERMINATING"})
+                        # Immediately update local status and broadcast to UI
+                        await broadcast("system_status", {"status": "COMPLETED", "active": False})
             except Exception as e:
                 logger.error(f"Error handling WS command: {e}")
     except WebSocketDisconnect:
