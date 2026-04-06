@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { config } from '../config';
 
 const DynamicScenarioInjector = ({ scenario }) => {
     const { globalMaxSteps, setGlobalMaxSteps } = useApp();
@@ -78,7 +79,7 @@ objective: Identify if a missing index or connection pool exhaustion is the caus
                 payload.max_steps = globalMaxSteps;
             }
 
-            const res = await fetch("http://localhost:7860/reset", {
+            const res = await fetch(`${config.API_BASE}/reset`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
@@ -172,7 +173,7 @@ objective: Identify if a missing index or connection pool exhaustion is the caus
                         {submitting ? 'Injecting...' : 'Inject & Reset'}
                     </button>
                     <button
-                        onClick={() => fetch("http://localhost:7860/start-simulation", { method: "POST" })}
+                        onClick={() => fetch(`${config.API_BASE}/start-simulation`, { method: "POST" })}
                         className="px-4 py-2 bg-secondary/10 hover:bg-secondary/20 text-secondary border border-secondary/30 rounded font-headline text-xs font-bold uppercase tracking-wider transition-colors shadow-[0_0_15px_rgba(221,183,255,0.05)] active:scale-95 whitespace-nowrap"
                     >
                         + START FULL SIMULATION

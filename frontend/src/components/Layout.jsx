@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { config } from '../config';
 import TopNavBar from './TopNavBar';
 import SideNavBar from './SideNavBar';
 
 /* ─── Terminal Panel ─── */
 const COMMANDS = {
     help: () => ['Commands: help | status | clear | echo <text>'],
-    status: () => ['Agent A (INV-01): STANDBY', 'Agent B (VAL-01): STANDBY', 'WebSocket: ws://localhost:7860/ws — CONNECTED', 'Episode: None active'],
+    status: () => ['Agent A (INV-01): STANDBY', 'Agent B (VAL-01): STANDBY', `WebSocket: ${config.WS_URL} — CONNECTED`, 'Episode: None active'],
 };
 
 const TerminalDrawer = ({ onClose }) => {

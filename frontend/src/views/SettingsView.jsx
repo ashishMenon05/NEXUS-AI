@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { config } from '../config';
 
 const OllamaModelPicker = ({ value, onChange, accentColor }) => {
     const [models, setModels] = useState([]);
@@ -9,7 +10,7 @@ const OllamaModelPicker = ({ value, onChange, accentColor }) => {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch('http://localhost:7860/models');
+            const res = await fetch(`${config.API_BASE}/models`);
             if (!res.ok) throw new Error('Backend not reachable');
             const data = await res.json();
             setModels((data.local_models || []).map(m => ({ name: m })));
@@ -89,7 +90,7 @@ const SettingsView = () => {
     useEffect(() => {
         const fetchConfig = async () => {
             try {
-                const res = await fetch('http://localhost:7860/config');
+                const res = await fetch(`${config.API_BASE}/config`);
                 const data = await res.json();
                 const roleA = data.models.agent_a_role || 'INVESTIGATOR';
                 const roleB = data.models.agent_b_role || 'VALIDATOR';
@@ -130,7 +131,7 @@ const SettingsView = () => {
 
     const handleSave = async () => {
         try {
-            await fetch('http://localhost:7860/config', {
+            await fetch(`${config.API_BASE}/config`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -162,7 +163,7 @@ const SettingsView = () => {
     // Auto-sync active settings so navigation doesn't wipe them
     useEffect(() => {
         if (!agentA.model && !agentB.model) return; // Wait for initial load or valid models
-        fetch('http://localhost:7860/config', {
+        fetch(`${config.API_BASE}/config`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -455,7 +456,7 @@ const SettingsView = () => {
                                     onClick={async () => {
                                         setSshTestStatus('testing');
                                         try {
-                                            const res = await fetch('http://localhost:7860/config/ssh-test', { method: 'POST' });
+                                            const res = await fetch(`${config.API_BASE}/config/ssh-test`, { method: 'POST' });
                                             const data = await res.json();
                                             setSshTestStatus(data.success ? 'ok' : 'fail');
                                         } catch { setSshTestStatus('fail'); }

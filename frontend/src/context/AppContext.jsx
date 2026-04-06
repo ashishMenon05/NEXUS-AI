@@ -1,12 +1,10 @@
-import React, { createContext, useContext, useMemo, useState, useEffect } from 'react';
-import useWebSocket from '../hooks/useWebSocket';
-
+import { config } from '../config';
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
     const [globalMaxSteps, setGlobalMaxSteps] = useState(30);
     const [simulationSeconds, setSimulationSeconds] = useState(0);
-    const { gameState, isConnected, sendCommand } = useWebSocket('ws://localhost:7860/ws');
+    const { gameState, isConnected, sendCommand } = useWebSocket(config.WS_URL);
 
     useEffect(() => {
         const status = gameState?.status;

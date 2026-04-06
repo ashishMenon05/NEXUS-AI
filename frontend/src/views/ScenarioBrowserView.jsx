@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { config } from '../config';
 
 const STATIC_SCENARIOS = [
     {
@@ -104,7 +105,7 @@ const ScenarioBrowserView = () => {
     const [isCreating, setIsCreating] = useState(false);
 
     useEffect(() => {
-        fetch('http://localhost:7860/scenarios')
+        fetch(`${config.API_BASE}/scenarios`)
             .then(r => r.json())
             .then(data => {
                 const allBackend = [
@@ -155,7 +156,7 @@ const ScenarioBrowserView = () => {
                     },
                     max_steps: globalMaxSteps
                 };
-            await fetch('http://localhost:7860/reset', {
+            await fetch(`${config.API_BASE}/reset`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)

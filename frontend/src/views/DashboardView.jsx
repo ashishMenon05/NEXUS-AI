@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { config } from '../config';
 import { useApp } from '../context/AppContext';
 import AgentTerminal from '../components/AgentTerminal';
 import DynamicScenarioInjector from '../components/DynamicScenarioInjector';
@@ -26,7 +27,7 @@ const SystemTelemetryWidget = ({ status }) => {
         
         const fetchTelemetry = async () => {
             try {
-                const res = await fetch('http://localhost:7860/telemetry');
+                const res = await fetch(`${config.API_BASE}/telemetry`);
                 if (!res.ok) return;
                 const data = await res.json();
                 
@@ -154,7 +155,7 @@ const DashboardView = () => {
     useEffect(() => {
         const fetchConfig = async () => {
             try {
-                const res = await fetch('http://localhost:7860/config');
+                const res = await fetch(`${config.API_BASE}/config`);
                 const data = await res.json();
                 setConfigModels({
                     agent_a: data.models.agent_a || 'Unconfigured',
@@ -182,7 +183,7 @@ const DashboardView = () => {
                 <div>
                     <h1 className="text-4xl font-headline font-bold tracking-tight text-on-surface uppercase">Operational_Dashboard</h1>
                     <p className={`font-mono text-sm mt-2 opacity-80 ${isConnected ? 'text-primary' : 'text-error'}`}>
-                        {isConnected ? 'CONNECTED_TO: ws://localhost:7860/ws' : 'DISCONNECTED: Backend server offline or starting...'}
+                        {isConnected ? `CONNECTED_TO: ${config.WS_URL}` : 'DISCONNECTED: Backend server offline or starting...'}
                     </p>
                 </div>
                 <div className="flex gap-6">
