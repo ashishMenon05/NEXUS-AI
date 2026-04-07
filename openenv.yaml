@@ -54,6 +54,6 @@ entry_point: backend/main.py
 docker_port: 7860
 
 baseline_scores:
-  software-incident: 0.45
-  business-process-failure: 0.35
+  software-incident: 0.00
+  business-process-failure: 0.00
   cascade-system-failure: 0.25

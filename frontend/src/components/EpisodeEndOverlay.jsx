@@ -238,7 +238,7 @@ const EpisodeEndOverlay = ({ isOpen, onClose, metrics, gameState }) => {
                     if (!resCall) return null;
                     const p = resCall.params || {};
                     return (
-                        <div className="px-8 pb-8">
+                        <div className="px-8 pb-4">
                             <div className="p-6 bg-surface-container-low/40 border border-primary/20 rounded-lg">
                                 <h3 className="font-headline font-bold text-primary tracking-widest uppercase mb-4 flex items-center gap-2">
                                     <span className="material-symbols-outlined">description</span>
@@ -257,6 +257,45 @@ const EpisodeEndOverlay = ({ isOpen, onClose, metrics, gameState }) => {
                                         <span className="font-mono text-[10px] text-tertiary uppercase block mb-1">Fix Applied</span>
                                         <p className="text-sm text-on-surface">{p.fix_applied || 'No fix described.'}</p>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                {/* Dual Agent Final Verdict Panel */}
+                {(() => {
+                    const msgsA = gameState?.agents?.agent_a?.messages || [];
+                    const msgsB = gameState?.agents?.agent_b?.messages || [];
+                    
+                    const textMsgsA = msgsA.filter(m => m.type === 'message');
+                    const textMsgsB = msgsB.filter(m => m.type === 'message');
+                    
+                    const lastMsgA = textMsgsA[textMsgsA.length - 1];
+                    const lastMsgB = textMsgsB[textMsgsB.length - 1];
+                    
+                    if (!lastMsgA && !lastMsgB) return null;
+
+                    return (
+                        <div className="px-8 pb-8">
+                            <div className="p-6 bg-surface-container-low/40 border border-white/10 rounded-lg">
+                                <h3 className="font-headline font-bold text-on-surface tracking-widest uppercase mb-4 flex items-center gap-2">
+                                    <span className="material-symbols-outlined">gavel</span>
+                                    Dual Agent Final Verdict
+                                </h3>
+                                <div className="space-y-4">
+                                    {lastMsgA && (
+                                        <div className="p-4 bg-primary/5 border-l-2 border-primary rounded-r">
+                                            <span className="font-mono text-[10px] text-primary uppercase block mb-1 tracking-widest">Agent Alpha Conclusion</span>
+                                            <p className="text-sm text-on-surface/90 leading-relaxed">{lastMsgA.content || lastMsgA.text || lastMsgA.message}</p>
+                                        </div>
+                                    )}
+                                    {lastMsgB && (
+                                        <div className="p-4 bg-secondary/5 border-l-2 border-secondary rounded-r">
+                                            <span className="font-mono text-[10px] text-secondary uppercase block mb-1 tracking-widest">Agent Bravo Conclusion</span>
+                                            <p className="text-sm text-on-surface/90 leading-relaxed">{lastMsgB.content || lastMsgB.text || lastMsgB.message}</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

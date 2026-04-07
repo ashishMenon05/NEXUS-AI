@@ -35,6 +35,9 @@ class ModelManager:
             
         if provider == "hf" and self.hf:
             return self.hf.get_client(), model_name
+        elif provider == "openrouter":
+            client = AsyncOpenAI(api_key=settings.OPENROUTER_API_KEY, base_url=settings.OPENROUTER_BASE_URL)
+            return client, model_name
         elif provider == "openai":
             # We spin up OpenAI dynamically pulling the global OpenAI Key
             client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)

@@ -38,6 +38,10 @@ class Settings:
     HF_TOKEN = os.getenv("HF_TOKEN", "")
     HF_INFERENCE_URL = os.getenv("HF_INFERENCE_URL", "https://api-inference.huggingface.co/v1")
 
+    # OPENROUTER
+    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+    OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+
     # SERVER
     HOST = os.getenv("HOST", "0.0.0.0")
     PORT = int(os.getenv("PORT", "7860"))

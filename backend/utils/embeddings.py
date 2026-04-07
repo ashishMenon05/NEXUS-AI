@@ -13,8 +13,15 @@ def get_embedding(text: str) -> List[float]:
         return response.json().get("embedding", [])
     except Exception as e:
         import logging
-        logging.error(f"Embedding failed: {e}")
-        return []
+        logging.error(f"Embedding failed: {e}. Using pseudo-embedding fallback.")
+        import re
+        import hashlib
+        words = re.findall(r'\w+', text.lower())
+        vec = [0.0] * 384
+        for w in words:
+            idx = int(hashlib.md5(w.encode()).hexdigest(), 16) % 384
+            vec[idx] += 1.0
+        return vec
 
 def cos_sim(a: List[float], b: List[float]) -> float:
     """Cosine similarity without PyTorch/Numpy dependencies"""
