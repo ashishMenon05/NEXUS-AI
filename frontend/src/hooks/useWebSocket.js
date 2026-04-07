@@ -31,130 +31,159 @@ const useWebSocket = (url) => {
             setEvents(prev => [...prev, data]);
 
             setGameState(prev => {
-                const draft = { ...prev };
+                let current = { ...prev };
 
                 if (data.type === 'episode_start') {
-                    draft.scenario = data.scenario;
-                    draft.active = true;
-                    draft.status = 'INVESTIGATING';
-                    draft.step = 0;
-                    draft.reward = 0;
-                    draft.cumulativeReward = 0;
-                    draft.clues_found = [];
-                    draft.agent_a_model = data.agent_a_model || draft.agent_a_model;
-                    draft.agent_b_model = data.agent_b_model || draft.agent_b_model;
-                    draft.agents.agent_a = { status: 'ACTIVE', messages: [] };
-                    draft.agents.agent_b = { status: 'ACTIVE', messages: [] };
+                    return {
+                        ...current,
+                        scenario: data.scenario,
+                        active: true,
+                        status: 'INVESTIGATING',
+                        step: 0,
+                        reward: 0,
+                        cumulativeReward: 0,
+                        clues_found: [],
+                        agent_a_model: data.agent_a_model || current.agent_a_model,
+                        agent_b_model: data.agent_b_model || current.agent_b_model,
+                        agents: {
+                            agent_a: { status: 'ACTIVE', messages: [] },
+                            agent_b: { status: 'ACTIVE', messages: [] }
+                        }
+                    };
                 }
 
+                const newState = { ...current };
+
                 if (data.step !== undefined) {
-                    draft.step = data.step;
+                    newState.step = data.step;
                 }
 
                 if (data.type === 'agent_partial') {
-                    const agent = draft.agents[data.agent_id];
+                    const agentId = data.agent_id;
+                    const agents = { ...newState.agents };
+                    const agent = { ...agents[agentId] };
                     if (agent) {
-                        const lastMsg = agent.messages[agent.messages.length - 1];
+                        const messages = [...agent.messages];
+                        const lastMsg = messages[messages.length - 1];
                         if (lastMsg && lastMsg.type === 'message' && lastMsg.partial) {
-                            lastMsg.content = data.full_message;
+                            messages[messages.length - 1] = { ...lastMsg, content: data.full_message };
                         } else {
-                            agent.messages.push({
+                            messages.push({
                                 type: 'message',
                                 content: data.full_message,
                                 partial: true
                             });
                         }
+                        agent.messages = messages;
+                        agents[agentId] = agent;
+                        newState.agents = agents;
                     }
                 }
 
                 if (data.type === 'agent_message') {
-                    const agent = draft.agents[data.agent_id];
+                    const agentId = data.agent_id;
+                    const agents = { ...newState.agents };
+                    const agent = { ...agents[agentId] };
                     if (agent) {
-                        const lastMsg = agent.messages[agent.messages.length - 1];
+                        const messages = [...agent.messages];
+                        const lastMsg = messages[messages.length - 1];
                         if (lastMsg && lastMsg.partial) {
-                            lastMsg.content = data.message;
-                            delete lastMsg.partial;
+                            messages[messages.length - 1] = { ...lastMsg, content: data.message, partial: undefined };
                         } else {
-                            agent.messages.push({
+                            messages.push({
                                 type: 'message',
                                 content: data.message
                             });
                         }
+                        agent.messages = messages;
+                        agents[agentId] = agent;
+                        newState.agents = agents;
                     }
                 }
 
                 if (data.status === 'READY') {
-                    draft.status = 'READY_TO_INJECT';
-                    draft.active = false;
-                    draft.agents.agent_a.messages = [];
-                    draft.agents.agent_b.messages = [];
+                    newState.status = 'READY_TO_INJECT';
+                    newState.active = false;
+                    newState.agents = {
+                        agent_a: { ...newState.agents.agent_a, messages: [] },
+                        agent_b: { ...newState.agents.agent_b, messages: [] }
+                    };
                 }
 
                 if (data.type === 'system_status') {
                     if (data.paused !== undefined) {
-                        draft.status = data.paused ? 'PAUSED' : 'INVESTIGATING';
+                        newState.status = data.paused ? 'PAUSED' : 'INVESTIGATING';
                     }
                     if (data.status) {
-                        draft.status = data.status;
+                        newState.status = data.status;
+                    }
+                    if (data.active !== undefined) {
+                        newState.active = data.active;
                     }
                 }
 
                 if (data.type === 'tool_call') {
-                    if (draft.agents[data.agent_id]) {
-                        draft.agents[data.agent_id].messages.push({
+                    const agentId = data.agent_id;
+                    if (newState.agents[agentId]) {
+                        const agents = { ...newState.agents };
+                        const agent = { ...agents[agentId], messages: [...agents[agentId].messages] };
+                        agent.messages.push({
                             type: 'tool_call',
                             tool_name: data.tool_name,
                             params: data.params
                         });
+                        agents[agentId] = agent;
+                        newState.agents = agents;
                     }
                 }
 
                 if (data.type === 'tool_result') {
-                    draft.agents.agent_a.messages.push({
+                    const agents = { ...newState.agents };
+                    const agentA = { ...agents.agent_a, messages: [...agents.agent_a.messages] };
+                    agentA.messages.push({
                         type: 'tool_result',
                         tool_name: data.tool_name,
                         result: data.result,
                         success: data.success
                     });
-                    
+                    agents.agent_a = agentA;
+                    newState.agents = agents;
+
                     // Simple heuristic for clues if not sent explicitly
                     const res = data.result?.toLowerCase() || '';
                     if (res.includes('error') || res.includes('anomaly') || res.includes('warning') || res.includes('degraded') || data.tool_name === 'propose_fix') {
-                        if (!draft.clues_found.includes(data.result)) {
-                            draft.clues_found.push(data.result);
+                        if (!newState.clues_found.includes(data.result)) {
+                            newState.clues_found = [...newState.clues_found, data.result];
                         }
                     }
                 }
 
                 if (data.type === 'reward_update') {
-                    draft.reward = data.reward;
-                    draft.cumulativeReward = data.cumulative;
-                    draft.rewardBreakdown = data.breakdown || {};
-                    draft.rewardHistory = [...(draft.rewardHistory || []), data.reward];
+                    newState.reward = data.reward;
+                    newState.cumulativeReward = data.cumulative;
+                    newState.rewardBreakdown = data.breakdown || {};
+                    newState.rewardHistory = [...(newState.rewardHistory || []), data.reward];
                 }
 
                 if (data.type === 'episode_end') {
-                    draft.active = false;
-                    draft.status = 'COMPLETED';
-                    draft.step = data.steps_taken || draft.step;
-                    draft.cumulativeReward = data.final_score !== undefined ? data.final_score : draft.cumulativeReward;
-                    draft.finalScore = data.final_score;
-                    draft.success = data.success;
-                    draft.fixVerified = data.fix_verified;
-                    if (data.clues_found) {
-                        draft.clues_found = data.clues_found;
-                    }
-                    if (data.reward_history) {
-                        draft.rewardHistory = data.reward_history;
-                    }
-                    if (data.final_breakdown) {
-                        draft.rewardBreakdown = data.final_breakdown;
-                    }
-                    draft.agents.agent_a.status = 'STANDBY';
-                    draft.agents.agent_b.status = 'STANDBY';
+                    newState.active = false;
+                    newState.status = 'COMPLETED';
+                    newState.step = data.steps_taken || newState.step;
+                    newState.cumulativeReward = data.final_score !== undefined ? data.final_score : newState.cumulativeReward;
+                    newState.finalScore = data.final_score;
+                    newState.success = data.success;
+                    newState.fixVerified = data.fix_verified;
+                    if (data.clues_found) newState.clues_found = data.clues_found;
+                    if (data.reward_history) newState.rewardHistory = data.reward_history;
+                    if (data.final_breakdown) newState.rewardBreakdown = data.final_breakdown;
+
+                    newState.agents = {
+                        agent_a: { ...newState.agents.agent_a, status: 'STANDBY' },
+                        agent_b: { ...newState.agents.agent_b, status: 'STANDBY' }
+                    };
                 }
 
-                return draft;
+                return newState;
             });
         };
 
