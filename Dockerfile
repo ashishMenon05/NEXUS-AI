@@ -36,7 +36,6 @@ COPY --chown=user:user default.env ./.env
 COPY --chown=user:user openenv.yaml .
 COPY --chown=user:user inference.py .
 COPY --chown=user:user pyproject.toml .
-COPY --chown=user:user uv.lock .
 COPY --chown=user:user server ./server
 
 # Copy built frontend from stage 1
