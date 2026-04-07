@@ -1,6 +1,3 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-
 [build-system]
 requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -10,7 +7,6 @@ name = "nexus-ai"
 version = "1.0.0"
 description = "NEXUS - Dual Agent Incident Investigation Environment"
 requires-python = ">=3.10"
-
 dependencies = [
     "openenv-core>=0.2.0",
     "fastapi>=0.100.0",
@@ -20,12 +16,6 @@ dependencies = [
     "httpx>=0.24.0",
     "openai>=1.0.0",
     "psutil>=5.9.0",
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.0.0",
-    "pytest-cov>=4.0.0",
 ]
 
 [project.scripts]
