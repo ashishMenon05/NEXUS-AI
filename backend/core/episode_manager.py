@@ -9,7 +9,7 @@ class EpisodeManager:
         self.is_paused = False
         self.simulation_task = None
 
-    async def reset(self, task: str, custom_scenario: dict = None, seed: int = None, max_steps: int = None):
+    async def reset(self, task: str, custom_scenario: dict = None, seed: int = None, max_steps: int = None, broadcast_episode: bool = True):
         # Cancel any active simulation loop
         if hasattr(self, 'simulation_task') and self.simulation_task and not self.simulation_task.done():
             self.simulation_task.cancel()
@@ -21,21 +21,22 @@ class EpisodeManager:
 
         obs = await self.env.reset(task=task, custom_scenario=custom_scenario, seed=seed, max_steps=max_steps)
         
-        # Broadcast episode_start
-        sc_safe = self.env.active_scenario.copy()
-        if "root_cause" in sc_safe: del sc_safe["root_cause"]
-        if "correct_fix" in sc_safe: del sc_safe["correct_fix"]
-        if "clue_map" in sc_safe: del sc_safe["clue_map"]
-        
-        from config import settings
-        await broadcast("episode_start", {
-            "episode_id": self.env.active_episode.episode_id,
-            "scenario": sc_safe,
-            "task": task,
-            "difficulty": self.env.active_episode.difficulty,
-            "agent_a_model": settings.AGENT_A_MODEL,
-            "agent_b_model": settings.AGENT_B_MODEL
-        })
+        if broadcast_episode:
+            # Broadcast episode_start
+            sc_safe = self.env.active_scenario.copy()
+            if "root_cause" in sc_safe: del sc_safe["root_cause"]
+            if "correct_fix" in sc_safe: del sc_safe["correct_fix"]
+            if "clue_map" in sc_safe: del sc_safe["clue_map"]
+            
+            from config import settings
+            await broadcast("episode_start", {
+                "episode_id": self.env.active_episode.episode_id,
+                "scenario": sc_safe,
+                "task": task,
+                "difficulty": self.env.active_episode.difficulty,
+                "agent_a_model": settings.AGENT_A_MODEL,
+                "agent_b_model": settings.AGENT_B_MODEL
+            })
         return obs
 
     async def step(self, action):

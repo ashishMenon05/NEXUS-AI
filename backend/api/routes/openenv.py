@@ -101,10 +101,26 @@ async def start_simulation():
     if not episode_manager.env.active_episode:
         logger.info("No active episode found for simulation. Performing auto-reset.")
         await episode_manager.reset(task="software-incident")
+    else:
+        # Broadcast episode_start to notify frontend a new simulation is beginning
+        from api.routes.websocket import broadcast
+        sc_safe = episode_manager.env.active_scenario.copy()
+        if "root_cause" in sc_safe: del sc_safe["root_cause"]
+        if "correct_fix" in sc_safe: del sc_safe["correct_fix"]
+        if "clue_map" in sc_safe: del sc_safe["clue_map"]
+        from config import settings
+        await broadcast("episode_start", {
+            "episode_id": episode_manager.env.active_episode.episode_id,
+            "scenario": sc_safe,
+            "task": episode_manager.env.active_episode.task,
+            "difficulty": episode_manager.env.active_episode.difficulty,
+            "agent_a_model": settings.AGENT_A_MODEL,
+            "agent_b_model": settings.AGENT_B_MODEL
+        })
         
     episode_manager.simulation_task = asyncio.create_task(simulation_loop())
     from api.routes.websocket import broadcast
-    await broadcast("system_status", {"active": True, "paused": False})
+    await broadcast("system_status", {"active": True, "paused": False, "status": "INVESTIGATING"})
     return {"status": "started"}
 
 @router.post("/reset", response_model=NexusObservation)
