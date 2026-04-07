@@ -124,9 +124,13 @@ async def start_simulation():
     return {"status": "started"}
 
 @router.post("/reset", response_model=NexusObservation)
-async def reset_env(req: ResetRequest):
+async def reset_env(req: Optional[ResetRequest] = None):
     try:
-        obs = await episode_manager.reset(req.task, req.custom_scenario, seed=req.seed, max_steps=req.max_steps)
+        task = req.task if req else "software-incident"
+        custom_scenario = req.custom_scenario if req else None
+        seed = req.seed if req else None
+        max_steps = req.max_steps if req else None
+        obs = await episode_manager.reset(task=task, custom_scenario=custom_scenario, seed=seed, max_steps=max_steps)
         return obs
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
