@@ -33,8 +33,8 @@ if "API_BASE_URL" not in os.environ:
 if "API_KEY" not in os.environ:
     os.environ["API_KEY"] = HF_TOKEN or "none"
 
-from openai import OpenAI
-client = OpenAI(base_url=os.environ["API_BASE_URL"], api_key=os.environ["API_KEY"])
+# The client should NOT be initialized here at the module level.
+# If the evaluator imports this file before patching os.environ, it will permanently bind to fallbacks.
 
 from backend.core.environment import NexusEnvironment
 from backend.api.schemas.action import NexusAction, ToolCall
@@ -69,6 +69,10 @@ def _print(line: str):
     print(line, flush=True)
 
 async def run():
+    # Initialize client dynamically at runtime to correctly capture evaluator's patched os.environ
+    from openai import OpenAI
+    client = OpenAI(base_url=os.environ["API_BASE_URL"], api_key=os.environ["API_KEY"])
+    
     try:
         env = NexusEnvironment()
         
