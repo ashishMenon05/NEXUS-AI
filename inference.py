@@ -16,22 +16,12 @@ sys.path.insert(0, str(ROOT / "backend"))
 from dotenv import load_dotenv
 load_dotenv(ROOT / "default.env")
 
-MODEL_NAME = os.environ.get("MODEL_NAME", "meta-llama/Llama-3.1-8B-Instruct")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-HF_TOKEN = os.environ.get("HF_TOKEN", "")
-
-if OPENAI_API_KEY:
-    API_KEY = OPENAI_API_KEY
-    API_BASE_URL = "https://api.openai.com/v1"
-elif HF_TOKEN and HF_TOKEN not in ("", "ollama", "your_huggingface_token_here", "hf_YourTokenHere"):
-    API_KEY = HF_TOKEN
-    API_BASE_URL = "https://router.huggingface.co/v1"
-else:
-    API_KEY = ""
-    API_BASE_URL = "https://router.huggingface.co/v1"
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Llama-3.1-8B-Instruct")
+HF_TOKEN = os.getenv("HF_TOKEN")
 
 from openai import OpenAI
-client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+client = OpenAI(base_url=API_BASE_URL, api_key=os.getenv("API_KEY", HF_TOKEN or "none"))
 
 from backend.core.environment import NexusEnvironment
 from backend.api.schemas.action import NexusAction, ToolCall
