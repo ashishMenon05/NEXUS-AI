@@ -92,19 +92,33 @@ class AgentRunner:
             sys_prompt = behavior + "\n\n" + tool_rules
 
         context = f"Current incident: {scenario.get('description', '')}\n"
-        if hasattr(episode_state, 'last_partner_message') and episode_state.last_partner_message:
-            context += f"Partner's last message: {episode_state.last_partner_message}\n"
+        
+        other_agents = [a["id"] for a in settings.AGENTS if a["id"] != agent_id]
+        if other_agents:
+            context += f"Other agents in this investigation: {', '.join(other_agents)}\n"
+        
+        agent_configs = {a["id"]: a for a in settings.AGENTS}
+        for other_id in other_agents:
+            other_msgs = episode_state.messages_by_agent.get(other_id, [])
+            if other_msgs:
+                other_role = agent_configs.get(other_id, {}).get("role", "AGENT")
+                last_msg = other_msgs[-1] if other_msgs else ""
+                context += f"\n[{other_role}] {other_id}'s latest insight: {last_msg[:300]}...\n"
+        
         if hasattr(episode_state, 'clues_found') and episode_state.clues_found:
-            context += f"Clues found: {episode_state.clues_found}\n"
+            context += f"\nClues discovered so far:\n"
+            for clue in episode_state.clues_found[-5:]:
+                context += f"- {clue[:200]}\n"
         
         messages = [{"role": "system", "content": sys_prompt}]
         
-        if hasattr(episode_state, 'all_messages'):
-            all_msgs = episode_state.all_messages[-3:]
-            if all_msgs:
-                context += "\nRecent history:\n"
-                for m in all_msgs:
-                    context += f"- {m}\n"
+        recent_msgs = episode_state.all_messages[-6:]
+        if recent_msgs:
+            context += "\nRecent conversation history:\n"
+            for i, m in enumerate(recent_msgs[-4:]):
+                if len(m) > 150:
+                    m = m[:150] + "..."
+                context += f"- {m}\n"
                 
         messages.append({"role": "user", "content": context})
         

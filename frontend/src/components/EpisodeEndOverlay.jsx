@@ -6,10 +6,9 @@ const EpisodeEndOverlay = ({ isOpen, onClose, metrics, gameState }) => {
     const handleDownload = () => {
         if (!gameState) return;
 
-        // Assemble the detailed incident report
         const sc = gameState.scenario || {};
-        const agentA = gameState.agents?.agent_a?.messages || [];
-        const agentB = gameState.agents?.agent_b?.messages || [];
+        const allAgents = gameState.agents || {};
+        const allMessages = Object.values(allAgents).flatMap(a => a?.messages || []);
 
         let report = `=================================================================\n`;
         report += `                  NEXUS INCIDENT INVESTIGATION REPORT            \n`;
@@ -20,7 +19,17 @@ const EpisodeEndOverlay = ({ isOpen, onClose, metrics, gameState }) => {
         report += `Domain:          ${sc.domain || 'N/A'}\n`;
         report += `Difficulty:      ${sc.difficulty || 'N/A'}\n`;
         report += `Final Grading Score: ${Number(gameState?.cumulativeReward || metrics?.score || 0).toFixed(4)} / 1.00\n`;
-        report += `Total Steps:     ${gameState?.step || metrics?.steps || 'N/A'}\n\n`;
+        report += `Total Steps:     ${gameState?.step || metrics?.steps || 'N/A'}\n`;
+        report += `Active Agents:   ${Object.keys(allAgents).length}\n\n`;
+        
+        report += `[ AGENTS DEPLOYED ]\n`;
+        Object.entries(allAgents).forEach(([agentId, agentData], idx) => {
+            const msgs = agentData?.messages || [];
+            const msgCount = msgs.filter(m => m.type === 'message').length;
+            const toolCount = msgs.filter(m => m.type === 'tool_call').length;
+            report += `${idx + 1}. ${agentId}: ${msgCount} messages, ${toolCount} tool calls\n`;
+        });
+        report += `\n`;
         
         report += `[ STEP REWARDS ]\n`;
         if (gameState?.rewardHistory && gameState.rewardHistory.length > 0) {
@@ -52,13 +61,10 @@ const EpisodeEndOverlay = ({ isOpen, onClose, metrics, gameState }) => {
         report += `[ INVESTIGATION LOG & DETAILED TRACE ]\n`;
         report += `=================================================================\n\n`;
 
-        // Interweave the messages to show the timeline (roughly)
-        // Since we don't have exact timestamps, we'll just print Agent A then Agent B summary,
-        // or just print all tools called and errors encountered.
         const allErrors = [];
         const allTools = [];
 
-        [...agentA, ...agentB].forEach(msg => {
+        allMessages.forEach(msg => {
             if (msg.type === 'tool_call') {
                 allTools.push(`- ${msg.tool_name}(${JSON.stringify(msg.params)})`);
             }
@@ -66,7 +72,6 @@ const EpisodeEndOverlay = ({ isOpen, onClose, metrics, gameState }) => {
                 allErrors.push(`- Error from ${msg.tool_name}: ${msg.result}`);
             }
             if (msg.type === 'tool_result' && msg.result?.toLowerCase().includes('error')) {
-                // Catch strings that say error but were marked success true somehow
                 allErrors.push(`- Log/Cmd Error: ${msg.result}`);
             }
         });
@@ -222,70 +227,42 @@ const EpisodeEndOverlay = ({ isOpen, onClose, metrics, gameState }) => {
                         {/* Right Column: Agent Metrics */}
                         <div className="space-y-6">
                             <h3 className="font-mono text-[10px] text-outline tracking-widest uppercase mb-4">Agent Performance Breakdown</h3>
-                            {/* Agent A */}
-                            <div className="relative group">
-                                <div className="absolute -left-4 top-0 bottom-0 w-1 bg-primary shadow-[0_0_8px_rgba(0,212,255,0.4)]"></div>
-                                <div className="bg-surface-container-low/40 p-5 space-y-4 border border-white/5 rounded-r-lg">
-                                    <div className="flex justify-between items-center">
-                                        <span className="font-headline font-bold text-primary tracking-tighter uppercase">Agent_Alpha</span>
-                                        <span className="font-mono text-[10px] text-primary/50">CYAN_PROTOCOL</span>
-                                    </div>
-                                    {(() => {
-                                        const msgs = gameState?.agents?.agent_a?.messages || [];
-                                        const msgCount = msgs.filter(m => m.type === 'message').length;
-                                        const toolCount = msgs.filter(m => m.type === 'tool_call').length;
-                                        const errCount = msgs.filter(m => m.type === 'tool_result' && m.result?.toLowerCase().includes('error')).length;
-                                        return (
+                            {Object.entries(gameState?.agents || {}).map(([agentId, agentData], idx) => {
+                                const colors = ['primary', 'secondary', 'tertiary', 'error', 'success'];
+                                const color = colors[idx % colors.length];
+                                const msgs = agentData?.messages || [];
+                                const msgCount = msgs.filter(m => m.type === 'message').length;
+                                const toolCount = msgs.filter(m => m.type === 'tool_call').length;
+                                const errCount = msgs.filter(m => m.type === 'tool_result' && m.result?.toLowerCase().includes('error')).length;
+                                const agentNames = ['ALPHA', 'BRAVO', 'CHARLIE', 'DELTA', 'ECHO'];
+                                const agentName = agentNames[idx % agentNames.length];
+                                
+                                return (
+                                    <div key={agentId} className="relative group">
+                                        <div className={`absolute -left-4 top-0 bottom-0 w-1 bg-${color} shadow-[0_0_8px_rgba(var(--${color}),0.4)]`}></div>
+                                        <div className="bg-surface-container-low/40 p-5 space-y-4 border border-white/5 rounded-r-lg">
+                                            <div className="flex justify-between items-center">
+                                                <span className={`font-headline font-bold text-${color} tracking-tighter uppercase`}>Agent_{agentName}</span>
+                                                <span className={`font-mono text-[10px] text-${color}/50`}>{agentId.toUpperCase()}</span>
+                                            </div>
                                             <div className="grid grid-cols-3 gap-2 text-center">
                                                 <div>
                                                     <span className="font-mono text-[9px] text-outline flex flex-col items-center justify-center gap-1 uppercase"><span className="material-symbols-outlined text-[12px]">chat</span> MSGS</span>
-                                                    <span className="font-headline text-lg font-medium text-primary">{msgCount}</span>
+                                                    <span className={`font-headline text-lg font-medium text-${color}`}>{msgCount}</span>
                                                 </div>
                                                 <div className="border-x border-white/5">
                                                     <span className="font-mono text-[9px] text-outline flex flex-col items-center justify-center gap-1 uppercase"><span className="material-symbols-outlined text-[12px]">build</span> TOOLS</span>
-                                                    <span className="font-headline text-lg font-medium text-primary">{toolCount}</span>
+                                                    <span className={`font-headline text-lg font-medium text-${color}`}>{toolCount}</span>
                                                 </div>
                                                 <div>
                                                     <span className="font-mono text-[9px] text-outline flex flex-col items-center justify-center gap-1 uppercase"><span className="material-symbols-outlined text-[12px]">warning</span> ERRS</span>
-                                                    <span className="font-headline text-lg font-medium text-primary">{errCount}</span>
+                                                    <span className={`font-headline text-lg font-medium text-${color}`}>{errCount}</span>
                                                 </div>
                                             </div>
-                                        );
-                                    })()}
-                                </div>
-                            </div>
-                            {/* Agent B */}
-                            <div className="relative group">
-                                <div className="absolute -left-4 top-0 bottom-0 w-1 bg-secondary shadow-[0_0_8px_rgba(221,183,255,0.4)]"></div>
-                                <div className="bg-surface-container-low/40 p-5 space-y-4 border border-white/5 rounded-r-lg">
-                                    <div className="flex justify-between items-center">
-                                        <span className="font-headline font-bold text-secondary tracking-tighter uppercase">Agent_Bravo</span>
-                                        <span className="font-mono text-[10px] text-secondary/50">VIOLET_PROTOCOL</span>
+                                        </div>
                                     </div>
-                                    {(() => {
-                                        const msgs = gameState?.agents?.agent_b?.messages || [];
-                                        const msgCount = msgs.filter(m => m.type === 'message').length;
-                                        const toolCount = msgs.filter(m => m.type === 'tool_call').length;
-                                        const errCount = msgs.filter(m => m.type === 'tool_result' && m.result?.toLowerCase().includes('error')).length;
-                                        return (
-                                            <div className="grid grid-cols-3 gap-2 text-center">
-                                                <div>
-                                                    <span className="font-mono text-[9px] text-outline flex flex-col items-center justify-center gap-1 uppercase"><span className="material-symbols-outlined text-[12px]">chat</span> MSGS</span>
-                                                    <span className="font-headline text-lg font-medium text-secondary">{msgCount}</span>
-                                                </div>
-                                                <div className="border-x border-white/5">
-                                                    <span className="font-mono text-[9px] text-outline flex flex-col items-center justify-center gap-1 uppercase"><span className="material-symbols-outlined text-[12px]">build</span> TOOLS</span>
-                                                    <span className="font-headline text-lg font-medium text-secondary">{toolCount}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="font-mono text-[9px] text-outline flex flex-col items-center justify-center gap-1 uppercase"><span className="material-symbols-outlined text-[12px]">warning</span> ERRS</span>
-                                                    <span className="font-headline text-lg font-medium text-secondary">{errCount}</span>
-                                                </div>
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
-                            </div>
+                                );
+                            })}
                         </div>
                     </div>
 
@@ -320,39 +297,38 @@ const EpisodeEndOverlay = ({ isOpen, onClose, metrics, gameState }) => {
                         );
                     })()}
 
-                    {/* Dual Agent Final Verdict Panel */}
+                    {/* Multi-Agent Final Verdict Panel */}
                     {(() => {
-                        const msgsA = gameState?.agents?.agent_a?.messages || [];
-                        const msgsB = gameState?.agents?.agent_b?.messages || [];
-
-                        const textMsgsA = msgsA.filter(m => m.type === 'message');
-                        const textMsgsB = msgsB.filter(m => m.type === 'message');
-
-                        const lastMsgA = textMsgsA[textMsgsA.length - 1];
-                        const lastMsgB = textMsgsB[textMsgsB.length - 1];
-
-                        if (!lastMsgA && !lastMsgB) return null;
+                        const allAgents = gameState?.agents || {};
+                        const agentEntries = Object.entries(allAgents);
+                        const conclusions = agentEntries.map(([agentId, agentData]) => {
+                            const msgs = agentData?.messages || [];
+                            const textMsgs = msgs.filter(m => m.type === 'message');
+                            return { agentId, lastMsg: textMsgs[textMsgs.length - 1] };
+                        }).filter(c => c.lastMsg);
+                        
+                        if (conclusions.length === 0) return null;
+                        
+                        const colors = ['primary', 'secondary', 'tertiary', 'error', 'success'];
 
                         return (
                             <div className="px-8 pb-8">
                                 <div className="p-6 bg-surface-container-low/40 border border-white/10 rounded-lg">
                                     <h3 className="font-headline font-bold text-on-surface tracking-widest uppercase mb-4 flex items-center gap-2">
                                         <span className="material-symbols-outlined">gavel</span>
-                                        Dual Agent Final Verdict
+                                        Multi-Agent Final Verdict
                                     </h3>
                                     <div className="space-y-4">
-                                        {lastMsgA && (
-                                            <div className="p-4 bg-primary/5 border-l-2 border-primary rounded-r">
-                                                <span className="font-mono text-[10px] text-primary uppercase block mb-1 tracking-widest">Agent Alpha Conclusion</span>
-                                                <p className="text-sm text-on-surface/90 leading-relaxed">{lastMsgA.content || lastMsgA.text || lastMsgA.message}</p>
-                                            </div>
-                                        )}
-                                        {lastMsgB && (
-                                            <div className="p-4 bg-secondary/5 border-l-2 border-secondary rounded-r">
-                                                <span className="font-mono text-[10px] text-secondary uppercase block mb-1 tracking-widest">Agent Bravo Conclusion</span>
-                                                <p className="text-sm text-on-surface/90 leading-relaxed">{lastMsgB.content || lastMsgB.text || lastMsgB.message}</p>
-                                            </div>
-                                        )}
+                                        {conclusions.map(({ agentId, lastMsg }, idx) => {
+                                            const color = colors[idx % colors.length];
+                                            const agentNames = ['ALPHA', 'BRAVO', 'CHARLIE', 'DELTA', 'ECHO'];
+                                            return (
+                                                <div key={agentId} className={`p-4 bg-${color}/5 border-l-2 border-${color} rounded-r`}>
+                                                    <span className={`font-mono text-[10px] text-${color} uppercase block mb-1 tracking-widest`}>Agent {agentNames[idx % agentNames.length]} ({agentId}) Conclusion</span>
+                                                    <p className="text-sm text-on-surface/90 leading-relaxed">{lastMsg.content || lastMsg.text || lastMsg.message}</p>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>

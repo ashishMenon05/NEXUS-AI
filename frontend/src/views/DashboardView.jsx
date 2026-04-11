@@ -141,9 +141,7 @@ const DashboardView = () => {
         active: false,
         step: 0,
         cumulativeReward: 0,
-        messages_by_agent: {
-            agent_a: []
-        }
+        agents: {}
     };
 
     const sc = state.scenario || {};
@@ -219,20 +217,31 @@ const DashboardView = () => {
             </div>
 
             {/* N-Agent Terminals */}
-            <div className={`grid grid-cols-1 ${configModels.agents.length > 2 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-6`}>
+            <div className={`grid grid-cols-1 ${
+                configModels.agents.length === 1 ? 'lg:grid-cols-1' :
+                configModels.agents.length === 2 ? 'lg:grid-cols-2' :
+                configModels.agents.length === 3 ? 'lg:grid-cols-3' :
+                configModels.agents.length === 4 ? 'lg:grid-cols-2' :
+                configModels.agents.length <= 6 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'
+            } gap-6 overflow-y-auto max-h-[80vh] custom-scrollbar pr-2`}>
                 {configModels.agents.map((agent, index) => {
-                    const isPrimary = index % 2 === 0;
-                    const accentColor = isPrimary ? 'cyan' : 'purple';
-                    // We don't have agent specific status tracked deeply beyond STANDBY/ACTIVE globally right now
-                    // We deduce messages from state.agents
+                    const colors = ['cyan', 'purple', 'green', 'orange', 'pink', 'yellow', 'red', 'blue'];
+                    const accentColor = colors[index % colors.length];
                     const messages = state.agents?.[agent.id]?.messages || [];
                     const agentStatus = state.active ? 'ACTIVE' : 'STANDBY';
-                    const icon = agent.role.includes('VALIDATOR') ? 'verified_user' : 'search';
+                    const icon = agent.role?.includes('VALIDATOR') ? 'verified_user' : 'search';
+                    
+                    // Scalable naming: ALPHA, BRAVO... then AA, AB...
+                    const agentNames = ['ALPHA', 'BRAVO', 'CHARLIE', 'DELTA', 'ECHO', 'FOXTROT', 'GOLF', 'HOTEL', 'INDIA', 'JULIETT', 'KILO', 'LIMA', 'MIKE', 'NOVEMBER', 'OSCAR', 'PAPA', 'QUEBEC', 'ROMEO', 'SIERRA', 'TANGO', 'UNIFORM', 'VICTOR', 'WHISKEY', 'X-RAY', 'YANKEE', 'ZULU'];
+                    let name = agentNames[index % agentNames.length];
+                    if (index >= agentNames.length) {
+                        name = `${name}_${Math.floor(index / agentNames.length)}`;
+                    }
 
                     return (
                         <AgentTerminal
                             key={agent.id}
-                            agentName={`Agent ${String.fromCharCode(65 + index)}: ${agent.role.replace(/_/g, ' ')}`}
+                            agentName={`Agent ${name}: ${agent.role?.replace(/_/g, ' ') || 'AGENT'}`}
                             model={agent.model}
                             status={agentStatus}
                             accentColor={accentColor}
@@ -322,11 +331,10 @@ const DashboardView = () => {
                 onClose={() => setIsOverlayDismissed(true)}
                 metrics={{
                     score: Number(state.cumulativeReward || 0).toFixed(2),
-                    runtime: '00:00:00', // could calculate if we tracked start/end time
+                    runtime: '00:00:00',
                     steps: state.step || 0,
                     rootCause: 'VERIFIED',
-                    agentA: { accuracy: 'High', latency: '42ms', iops: '9' },
-                    agentB: { accuracy: 'High', latency: '38ms', iops: '7' }
+                    agentCount: Object.keys(state.agents || {}).length
                 }}
                 gameState={state}
             />

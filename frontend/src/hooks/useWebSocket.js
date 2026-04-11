@@ -9,8 +9,6 @@ const useWebSocket = (url) => {
         step: 0,
         reward: 0,
         cumulativeReward: 0,
-        agent_a_model: '',
-        agent_b_model: '',
         agents: {},
         clues_found: [],
         rewardBreakdown: {},

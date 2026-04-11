@@ -279,16 +279,17 @@ const SettingsView = () => {
     };
 
     const addAgent = () => {
-        if (agents.length >= 4) return;
-        const newId = `agent_${String.fromCharCode(97 + agents.length)}`;
+        const newId = `agent_${Date.now()}`;
+        const roles = ['INVESTIGATOR', 'VALIDATOR', 'FORENSIC_ANALYST', 'NETWORK_ENGINEER', 'SYSTEM_ADMIN', 'SECURITY_ARCHITECT', 'COMPLIANCE_OFFICER'];
+        const role = roles[agents.length % roles.length];
         setAgents(prev => [...prev, {
-            id: newId, provider: 'hf', model: '', hfModel: 'meta-llama/Llama-3.2-1B-Instruct', openaiModel: 'gpt-4o-mini', temp: 0.5, role: 'INVESTIGATOR', customRoleName: '', customPrompt: ''
+            id: newId, provider: 'hf', model: '', hfModel: 'meta-llama/Llama-3.2-1B-Instruct', openaiModel: 'gpt-4o-mini', temp: Math.max(0.3, 0.7 - agents.length * 0.05), role, customRoleName: '', customPrompt: ''
         }]);
     };
 
     const removeAgent = (index) => {
         if (agents.length <= 1) return;
-        setAgents(prev => prev.filter((_, i) => i !== index).map((a, i) => ({ ...a, id: `agent_${String.fromCharCode(97 + i)}` })));
+        setAgents(prev => prev.filter((_, i) => i !== index));
     };
 
     const ProviderToggle = ({ agent, index }) => (
@@ -322,9 +323,14 @@ const SettingsView = () => {
                 </div>
             </section>
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
-                {/* N-Agents Render */}
-                {agents.map((agent, index) => {
+            <div className="md:col-span-12">
+                <div className="flex items-center gap-3 mb-4">
+                    <span className="font-mono text-[10px] tracking-widest text-primary uppercase">Active_Agent_Nodes</span>
+                    <div className="flex-1 h-px bg-primary/10"></div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch max-h-[1200px] overflow-y-auto pr-2 custom-scrollbar p-1">
+                    {/* N-Agents Render */}
+                    {agents.map((agent, index) => {
                     const isPrimary = index % 2 === 0;
                     const accentColor = isPrimary ? 'primary' : 'secondary';
                     const titleColor = isPrimary ? 'text-primary' : 'text-secondary';
@@ -340,8 +346,8 @@ const SettingsView = () => {
                                 <div className="flex-1">
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <h3 className="font-headline text-xl font-bold uppercase">Agent {String.fromCharCode(65 + index)} <span className={`${titleColor} text-sm ml-2 tracking-tighter`}>[NPU_0{index + 1}]</span></h3>
-                                            <p className="font-mono text-[10px] text-slate-500 uppercase">Process ID: {agent.id}</p>
+                                            <h3 className="font-headline text-xl font-bold uppercase">{agent.role.replace(/_/g, ' ')} <span className={`${titleColor} text-sm ml-2 tracking-tighter`}>[{agent.id.toUpperCase()}]</span></h3>
+                                            <p className="font-mono text-[10px] text-slate-500 uppercase">Node ID: {agent.id}</p>
                                         </div>
                                         <div className="flex gap-2 items-center">
                                             <ProviderToggle agent={agent} index={index} />
@@ -443,14 +449,15 @@ const SettingsView = () => {
                         </div>
                     );
                 })}
-                {agents.length < 4 && (
-                    <div className="md:col-span-12 flex justify-center mt-4">
-                        <button onClick={addAgent} className="flex items-center gap-2 px-8 py-3 rounded-xl border border-dashed border-outline-variant/30 text-outline-variant font-mono text-xs uppercase hover:bg-surface-container-highest hover:text-white transition-all">
-                            <span className="material-symbols-outlined text-[16px]">add</span>
-                            <span>Add Compute Node (Max 4)</span>
-                        </button>
-                    </div>
-                )}
+                </div>
+            </div>
+
+            <div className="md:col-span-12 flex justify-center mt-4">
+                <button onClick={addAgent} className="flex items-center gap-2 px-8 py-3 rounded-xl border border-dashed border-outline-variant/30 text-outline-variant font-mono text-xs uppercase hover:bg-surface-container-highest hover:text-white transition-all bg-white/5">
+                    <span className="material-symbols-outlined text-[16px]">add</span>
+                    <span>Add Agent Node</span>
+                </button>
+            </div>
 
                 {/* Execution Environment */}
                 <div className="md:col-span-12 glass-panel rounded-xl p-8 refractive-edge">
@@ -593,7 +600,7 @@ const SettingsView = () => {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => { 
-                            setAgents([{ id: 'agent_a', provider: 'ollama', model: '', temp: 0.7, role: 'INVESTIGATOR' }]); 
+                            setAgents([{ id: 'agent_default', provider: 'ollama', model: '', temp: 0.7, role: 'INVESTIGATOR', customRoleName: '', customPrompt: '' }]); 
                             setMaxSteps(12); 
                         }}
                         className="px-8 py-3 bg-surface-container-high text-on-surface-variant font-headline font-bold text-sm tracking-widest rounded hover:bg-surface-container-highest hover:text-white transition-all uppercase"
