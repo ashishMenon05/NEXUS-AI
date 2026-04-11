@@ -25,9 +25,9 @@
         "description": "Nginx rate limit was set too low (10 requests/sec) during a maintenance window."
     },
     "grading_criteria": {
-        "nginx_rate_limit_fixed": 0.50,
+        "nginx_rate_limit_fixed": 0.49,
         "nginx_restarted": 0.20,
         "fix_verified": 0.20,
-        "efficiency_bonus": 0.10
+        "efficiency_bonus": 0.09
     }
 }
