@@ -11,7 +11,6 @@ from scenarios.graders.hard_grader import HardGrader
 from api.schemas.action import NexusAction
 from api.schemas.observation import NexusObservation, ToolResult
 from config import settings
-import statistics
 
 SIMULATED_TOOLS = ["read_logs", "check_config", "query_database", "check_service_status", "run_diagnostic", "update_config", "restart_service", "propose_fix", "verify_fix", "submit_resolution"]
 SSH_TOOLS = ["run_terminal_command", "propose_fix", "verify_fix", "submit_resolution"]
@@ -30,10 +29,6 @@ class NexusEnvironment:
 
     async def reset(self, task: str = "software-incident", scenario_id: str = None, custom_scenario: dict = None, seed: int = None, max_steps: int = None) -> NexusObservation:
         # Determine difficulty from task
-        valid_tasks = ["software-incident", "business-process-failure", "cascade-system-failure"]
-        if task not in valid_tasks and not custom_scenario and not scenario_id:
-            raise ValueError(f"Invalid task name: {task}")
-            
         difficulty = "easy"
         if task == "business-process-failure":
             difficulty = "medium"
@@ -71,7 +66,7 @@ class NexusEnvironment:
         obs = NexusObservation(
             partner_message="",
             tool_results=[],
-            system_state=self.active_episode.system_state,  # Expose real state so agent sees initial conditions
+            system_state={},
             investigation_stage="investigating",
             round=1,
             available_tools=available_tools,
@@ -116,32 +111,15 @@ class NexusEnvironment:
                     "fix_applied": "No fix was submitted."
                 })
             
-            # Hybrid Final Scorer: Combine objective grader results with semantic reward history
+            # Final scoring overrides semantic cumulative reward in openenv inference if grader is used
+            # We compute it here for info
             grader = self.graders.get(ep.difficulty, self.graders["easy"])
-            grader_score = grader.grade(ep, sc)
-            
-            # Use average step reward as the semantic component (0.0 - 1.0)
-            avg_semantic = statistics.mean(ep.reward_history) if ep.reward_history else 0.0
-            
-            # Weighted average: Grader (Objective) 60% + Semantic (Quality) 40%
-            # If the grader score is 0.9 or higher, we lean more into the objective truth.
-            if grader_score >= 0.90:
-                final_score = grader_score * 0.8 + avg_semantic * 0.2
-            else:
-                final_score = grader_score * 0.6 + avg_semantic * 0.4
-            
-            # Clamp to strictly between 0 and 1
-            if final_score <= 0.0:
-                final_score = 0.001
-            elif final_score >= 1.0:
-                final_score = 0.999
-            else:
-                final_score = round(final_score, 4)
+            final_score = grader.grade(ep, sc)
             
             info = {
-                "breakdown": {**breakdown, "semantic_avg": round(avg_semantic, 4), "objective_score": grader_score},
+                "breakdown": breakdown,
                 "final_score": final_score,
-                "success": (final_score >= settings.SUCCESS_SCORE_THRESHOLD) or (ep.fix_verified and grader_score > 0)
+                "success": final_score >= settings.SUCCESS_SCORE_THRESHOLD and ep.fix_verified
             }
         else:
             info = {"breakdown": breakdown}
@@ -149,7 +127,7 @@ class NexusEnvironment:
         obs = NexusObservation(
             partner_message=action.message,
             tool_results=tool_results_objs,
-            system_state=ep.system_state,  # Return real mutated state so agent sees the effect of its actions
+            system_state={"total_tools_run": len(ep.tool_calls_made)},
             investigation_stage=ep.investigation_stage,
             round=ep.current_round,
             available_tools=SSH_TOOLS if settings.EXECUTION_MODE == "ssh" else SIMULATED_TOOLS,
@@ -162,11 +140,5 @@ class NexusEnvironment:
 
     def state(self):
         if not self.active_episode:
-            # Return a valid default state so the /state endpoint always responds
-            return {"status": "idle", "message": "No active episode. Call /reset to start."}
+            return None
         return self.active_episode.to_pydantic()
-
-    async def close(self):
-        """Clean up the active episode. Required by OpenEnv spec."""
-        self.active_episode = None
-        self.active_scenario = None
